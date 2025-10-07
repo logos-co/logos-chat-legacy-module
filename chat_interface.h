@@ -1,7 +1,7 @@
 #pragma once
 
 #include <QtCore/QObject>
-#include "../../logos-liblogos/interface.h"
+#include "interface.h"
 #include <functional>
 
 // Define a callback type for message handling
