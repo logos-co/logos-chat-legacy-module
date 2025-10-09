@@ -403,6 +403,7 @@ void* initAndStart(LogosAPI* logosAPI, LogosModules* logos, const std::string& r
         "dnsDiscovery": true,
         "dnsDiscoveryUrl": "enrtree://AMOJVZX4V6EXP7NTJPMAYJYST2QP6AJXYW76IU6VGJS7UVSNDYZG4@boot.prod.status.nodes.status.im",
         "discv5Discovery": false,
+        "numShardsInNetwork": 257,
         "discv5EnrAutoUpdate": false,
         "logLevel": "INFO",
         "keepAlive": true
@@ -584,12 +585,12 @@ void retrieveHistory(LogosAPI* logosAPI, LogosModules* logos, const std::string&
     uint64_t timeStart = (nowSeconds - oneDay) * 1000000000ULL; // Convert to nanoseconds
 
    std::string queryJson = R"({
-       "request_id": "15be8c48-55ce-4bf2-a34-8813d4da2dec",
-       "include_data": true,
-       "content_topics": [")" + contentTopic + R"("],
-       "time_start": 1744123537000000000,
-       "pagination_forward": true,
-       "pagination_limit": 100
+       "requestId": "15be8c48-55ce-4bf2-a34-8813d4da2dec",
+       "includeData": true,
+       "contentTopics": [")" + contentTopic + R"("],
+       "timeStart": 1744123537000000000,
+       "paginationForward": true,
+       "paginationLimit": 100
    })";
 
     std::cout << "Query JSON: " << queryJson.c_str() << std::endl;
