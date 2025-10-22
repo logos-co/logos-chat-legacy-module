@@ -1,5 +1,5 @@
 {
-  description = "Logos Test Example - Pulls and compiles logos-liblogos, logos-package-manager, and logos-capability-module";
+  description = "Logos Waku Module - Pulls and compiles logos-liblogos, logos-package-manager, and logos-capability-module";
 
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
@@ -26,7 +26,7 @@
     {
       packages = forAllSystems ({ pkgs, liblogos, cppSdk, packageManager, capabilityModule, wakuModule }: {
         default = pkgs.stdenv.mkDerivation rec {
-          pname = "logos-test-example";
+          pname = "logos-chat-module";
           version = "1.0.0";
           
           src = ./.;
@@ -72,7 +72,7 @@
           configurePhase = ''
             runHook preConfigure
             
-            echo "Configuring logos-test-example..."
+            echo "Configuring logos-chat-module..."
             echo "liblogos: ${liblogos}"
             echo "cpp-sdk: ${cppSdk}"
             echo "package-manager: ${packageManager}"
@@ -86,11 +86,6 @@
             test -d "${capabilityModule}" || (echo "capability-module not found" && exit 1)
             test -d "${wakuModule}" || (echo "waku-module not found" && exit 1)
             
-            # Run cpp generator on metadata.json
-            echo "Running cpp generator on metadata.json..."
-            mkdir -p ./results/modules
-            "${cppSdk}/bin/logos-cpp-generator" --metadata ./metadata.json --module-dir ./results/modules
-            echo "${cppSdk}"
             
             cmake -S . -B build \
               -GNinja \
@@ -105,7 +100,7 @@
             runHook preBuild
             
             cmake --build build
-            echo "logos-test-example built successfully!"
+            echo "logos-chat-module built successfully!"
             
             runHook postBuild
           '';
@@ -113,7 +108,7 @@
           installPhase = ''
             set -euo pipefail
             mkdir -p $out
-            echo "Logos Test Example - All components compiled successfully" > $out/README.txt
+            echo "Logos Waku Module - All components compiled successfully" > $out/README.txt
             echo "liblogos: ${liblogos}" >> $out/README.txt
             echo "cpp-sdk: ${cppSdk}" >> $out/README.txt
             echo "package-manager: ${packageManager}" >> $out/README.txt
@@ -124,9 +119,9 @@
             mkdir -p "$out/bin" "$out/lib" "$out/bin/modules" "$out/modules"
             
             # Install our custom binary
-            if [ -f "build/bin/logos-test-example" ]; then
-              cp build/bin/logos-test-example "$out/bin/"
-              echo "Installed logos-test-example binary"
+            if [ -f "build/bin/logos-chat-module" ]; then
+              cp build/bin/logos-chat-module "$out/bin/"
+              echo "Installed logos-chat-module binary"
             fi
             
             # Also copy the original binaries from liblogos for reference
@@ -142,10 +137,10 @@
               cp -L "${liblogos}/lib/"liblogos_core.* "$out/lib/" || true
             fi
 
-            # Copy libwaku library to modules directory alongside the plugin
+            # Symlink libwaku library to modules directory alongside the plugin
             if ls "${wakuModule}/lib/logos/modules/"libwaku.* >/dev/null 2>&1; then
-              cp -L "${wakuModule}/lib/logos/modules/"libwaku.* "$out/bin/modules/" || true
-              cp -L "${wakuModule}/lib/logos/modules/"libwaku.* "$out/modules/" || true
+              ln -s "${wakuModule}/lib/logos/modules/"libwaku.* "$out/bin/modules/" || true
+              ln -s "${wakuModule}/lib/logos/modules/"libwaku.* "$out/modules/" || true
             fi
 
             # Determine platform-specific plugin extension
@@ -167,6 +162,30 @@
             ln -s "${capabilityModule}/lib/logos/modules/capability_module_plugin.$OS_EXT" "$out/modules/capability_module_plugin.$OS_EXT" || true
             ln -s "${wakuModule}/lib/logos/modules/waku_module_plugin.$OS_EXT" "$out/modules/waku_module_plugin.$OS_EXT" || true
 
+            # Run cpp generator on metadata.json after modules are symlinked
+            echo "Running cpp generator on metadata.json..."
+            echo "Module directory contents:"
+            ls -la "$out/modules/"
+            "${cppSdk}/bin/logos-cpp-generator" --metadata ./metadata.json --module-dir "$out/modules"
+
+            # Copy generated files to output directory
+            echo "Copying generated SDK files..."
+            mkdir -p "$out/generated"
+            
+            # The generator creates files in the source directory, so we need to copy from there
+            if [ -d "./logos-cpp-sdk/cpp/generated" ]; then
+              cp -r "./logos-cpp-sdk/cpp/generated"/* "$out/generated/" || true
+              echo "Generated SDK files copied to $out/generated/"
+              ls -la "$out/generated/"
+            elif [ -d "${cppSdk}/cpp/generated" ]; then
+              cp -r "${cppSdk}/cpp/generated"/* "$out/generated/" || true
+              echo "Generated SDK files copied to $out/generated/"
+              ls -la "$out/generated/"
+            else
+              echo "Warning: Generated directory not found. Checking current directory:"
+              find . -name "generated" -type d 2>/dev/null || echo "No generated directories found"
+            fi
+
             # Helpful message
             echo "Installed runtime to $out"
             echo " - binaries in $out/bin"
@@ -178,7 +197,7 @@
           '';
           
           meta = with pkgs.lib; {
-            description = "Logos Test Example - Pulls and compiles logos-liblogos, logos-package-manager, and logos-capability-module";
+            description = "Logos Waku Module - Pulls and compiles logos-liblogos, logos-package-manager, and logos-capability-module";
             platforms = platforms.unix;
           };
         };
@@ -238,7 +257,7 @@
             else
               export QT_PLUGIN_PATH="$qt_plugin_path"
             fi
-            echo "Logos Test Example development environment"
+            echo "Logos Waku Module development environment"
             echo "LOGOS_LIBLOGOS_ROOT: $LOGOS_LIBLOGOS_ROOT"
             echo "LOGOS_CPP_SDK_ROOT: $LOGOS_CPP_SDK_ROOT"
             echo "LOGOS_PACKAGE_MANAGER_ROOT: $LOGOS_PACKAGE_MANAGER_ROOT"
