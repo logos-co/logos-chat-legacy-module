@@ -154,13 +154,44 @@
                 OS_EXT="dll";;
             esac
 
+            # Fix library paths for waku module plugin
+            echo "Fixing library paths for waku module plugin..."
+            if [ -f "${wakuModule}/lib/logos/modules/waku_module_plugin.$OS_EXT" ]; then
+              # Copy the plugin to fix its library references
+              cp "${wakuModule}/lib/logos/modules/waku_module_plugin.$OS_EXT" "$out/bin/modules/waku_module_plugin.$OS_EXT"
+              cp "${wakuModule}/lib/logos/modules/waku_module_plugin.$OS_EXT" "$out/modules/waku_module_plugin.$OS_EXT"
+              
+              # Fix the library path on macOS
+              if [ "$(uname -s)" = "Darwin" ]; then
+                if command -v install_name_tool >/dev/null 2>&1; then
+                  # Find the correct libwaku path
+                  WAKU_LIB_PATH=$(find "${wakuModule}" -name "libwaku.*" -type f | head -1)
+                  if [ -n "$WAKU_LIB_PATH" ]; then
+                    echo "Fixing waku_module_plugin to use libwaku at: $WAKU_LIB_PATH"
+                    
+                    # Check what library references exist in the plugin
+                    echo "Current library references in waku_module_plugin:"
+                    otool -L "${wakuModule}/lib/logos/modules/waku_module_plugin.$OS_EXT" | grep libwaku || echo "No libwaku references found"
+                    
+                    # Try to fix any libwaku references that don't point to the Nix store
+                    otool -L "${wakuModule}/lib/logos/modules/waku_module_plugin.$OS_EXT" | grep libwaku | while read line; do
+                      OLD_PATH=$(echo "$line" | sed 's/^[[:space:]]*//' | cut -d' ' -f1)
+                      if [[ "$OLD_PATH" != /nix/store/* ]]; then
+                        echo "Fixing library reference: $OLD_PATH -> $WAKU_LIB_PATH"
+                        install_name_tool -change "$OLD_PATH" "$WAKU_LIB_PATH" "$out/bin/modules/waku_module_plugin.$OS_EXT" || true
+                        install_name_tool -change "$OLD_PATH" "$WAKU_LIB_PATH" "$out/modules/waku_module_plugin.$OS_EXT" || true
+                      fi
+                    done
+                  fi
+                fi
+              fi
+            fi
+
             # Symlink plugins into both expected locations
             ln -s "${packageManager}/lib/logos/modules/package_manager_plugin.$OS_EXT" "$out/bin/modules/package_manager_plugin.$OS_EXT" || true
             ln -s "${capabilityModule}/lib/logos/modules/capability_module_plugin.$OS_EXT" "$out/bin/modules/capability_module_plugin.$OS_EXT" || true
-            ln -s "${wakuModule}/lib/logos/modules/waku_module_plugin.$OS_EXT" "$out/bin/modules/waku_module_plugin.$OS_EXT" || true
             ln -s "${packageManager}/lib/logos/modules/package_manager_plugin.$OS_EXT" "$out/modules/package_manager_plugin.$OS_EXT" || true
             ln -s "${capabilityModule}/lib/logos/modules/capability_module_plugin.$OS_EXT" "$out/modules/capability_module_plugin.$OS_EXT" || true
-            ln -s "${wakuModule}/lib/logos/modules/waku_module_plugin.$OS_EXT" "$out/modules/waku_module_plugin.$OS_EXT" || true
 
             # Run cpp generator on metadata.json after modules are symlinked
             echo "Running cpp generator on metadata.json..."
