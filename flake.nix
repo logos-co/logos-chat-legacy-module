@@ -5,7 +5,7 @@
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
     logos-cpp-sdk.url = "github:logos-co/logos-cpp-sdk";
     logos-liblogos.url = "github:logos-co/logos-liblogos";
-    logos-waku-module.url = "git+ssh://git@github.com/logos-co/logos-waku-module.git";
+    logos-waku-module.url = "git+ssh://git@github.com/logos-co/logos-waku-module.git?ref=update_flake&rev=fb6dc746d0c8885c3467feedbf252bd7858411c0";
   };
 
   outputs = { self, nixpkgs, logos-cpp-sdk, logos-liblogos, logos-waku-module }:
@@ -20,42 +20,33 @@
     in
     {
       packages = forAllSystems ({ pkgs, logosSdk, logosLiblogos, logosWaku }: {
-        default = pkgs.stdenv.mkDerivation rec {
-          pname = "logos-chat-module";
-          version = "1.0.0";
-          
-          src = ./.;
-          
-          nativeBuildInputs = [ 
-            pkgs.cmake 
-            pkgs.ninja 
-            pkgs.pkg-config
-            pkgs.qt6.wrapQtAppsNoGuiHook
-            pkgs.protobuf
-          ];
-          
-          buildInputs = [ 
-            pkgs.qt6.qtbase 
-            pkgs.qt6.qtremoteobjects 
-            pkgs.protobuf
-            pkgs.abseil-cpp
+        default = pkgs.symlinkJoin {
+          name = "logos-chat-module-deps";
+          paths = [
             logosSdk
             logosLiblogos
+            logosWaku
+            pkgs.qt6.qtbase
+            pkgs.qt6.qtremoteobjects
+            pkgs.protobuf
+            pkgs.abseil-cpp
+            pkgs.cmake
+            pkgs.ninja
+            pkgs.pkg-config
           ];
           
-          cmakeFlags = [ 
-            "-GNinja"
-            "-DLOGOS_CPP_SDK_ROOT=${logosSdk}"
-            "-DLOGOS_LIBLOGOS_ROOT=${logosLiblogos}"
-            "-DLOGOS_CHAT_MODULE_USE_VENDOR=OFF"
-          ];
-          
-          # Set environment variables for CMake to find the dependencies
-          LOGOS_CPP_SDK_ROOT = "${logosSdk}";
-          LOGOS_LIBLOGOS_ROOT = "${logosLiblogos}";
+          postBuild = ''
+            mkdir -p $out/env
+            cat > $out/env/setup.sh << 'EOF'
+            export LOGOS_CPP_SDK_ROOT="${logosSdk}"
+            export LOGOS_LIBLOGOS_ROOT="${logosLiblogos}"
+            export LOGOS_WAKU_MODULE_ROOT="${logosWaku}"
+            export CMAKE_PREFIX_PATH="$CMAKE_PREFIX_PATH:${logosSdk}:${logosLiblogos}:${logosWaku}"
+            EOF
+          '';
           
           meta = with pkgs.lib; {
-            description = "Logos Chat Module - Provides chat capabilities with protobuf messaging support";
+            description = "Logos Chat Module dependencies bundle";
             platforms = platforms.unix;
           };
         };
