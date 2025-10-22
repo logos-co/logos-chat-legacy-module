@@ -4,7 +4,7 @@
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
     logos-liblogos.url = "git+ssh://git@github.com/logos-co/logos-liblogos.git";
-    logos-cpp-sdk.url = "git+ssh://git@github.com/logos-co/logos-cpp-sdk.git";
+    logos-cpp-sdk.url = "git+ssh://git@github.com/logos-co/logos-cpp-sdk.git?rev=e855512c77dadddf1436f2eea2fd5b8c6ac324bf";
     #logos-package-manager.url = "path:/Users/iurimatias/Projects/Logos/LogosCore/logos-package-manager";
     logos-package-manager.url = "git+ssh://git@github.com/logos-co/logos-package-manager.git";
     logos-capability-module.url = "git+ssh://git@github.com/logos-co/logos-capability-module.git";
@@ -85,6 +85,12 @@
             test -d "${packageManager}" || (echo "package-manager not found" && exit 1)
             test -d "${capabilityModule}" || (echo "capability-module not found" && exit 1)
             test -d "${wakuModule}" || (echo "waku-module not found" && exit 1)
+            
+            # Run cpp generator on metadata.json
+            echo "Running cpp generator on metadata.json..."
+            mkdir -p ./results/modules
+            "${cppSdk}/bin/logos-cpp-generator" --metadata ./metadata.json --module-dir ./results/modules
+            echo "${cppSdk}"
             
             cmake -S . -B build \
               -GNinja \
