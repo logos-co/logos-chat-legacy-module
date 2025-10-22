@@ -43,6 +43,29 @@
             export LOGOS_WAKU_MODULE_ROOT="${logosWaku}"
             export CMAKE_PREFIX_PATH="$CMAKE_PREFIX_PATH:${logosSdk}:${logosLiblogos}:${logosWaku}"
             EOF
+            
+            # Create modules directory with direct symlinks to plugin files
+            mkdir -p $out/modules
+            
+            # Determine platform-specific library extension
+            case "$(uname -s)" in
+              Darwin)
+                OS_EXT="dylib";;
+              Linux)
+                OS_EXT="so";;
+              MINGW*|MSYS*|CYGWIN*)
+                OS_EXT="dll";;
+              *)
+                OS_EXT="so";;
+            esac
+            
+            # Symlink waku module plugin and library if they exist
+            if [ -f "${logosWaku}/lib/logos/modules/waku_module_plugin.$OS_EXT" ]; then
+              ln -sf "${logosWaku}/lib/logos/modules/waku_module_plugin.$OS_EXT" "$out/modules/waku_module_plugin.$OS_EXT"
+            fi
+            if ls "${logosWaku}/lib/logos/modules/"libwaku.* >/dev/null 2>&1; then
+              ln -sf "${logosWaku}/lib/logos/modules/"libwaku.* "$out/modules/"
+            fi
           '';
           
           meta = with pkgs.lib; {
