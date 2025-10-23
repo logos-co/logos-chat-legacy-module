@@ -2,13 +2,13 @@
   description = "Logos Waku Module - Pulls and compiles logos-liblogos, logos-package-manager, and logos-capability-module";
 
   inputs = {
-    nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
-    logos-liblogos.url = "git+ssh://git@github.com/logos-co/logos-liblogos.git";
-    logos-cpp-sdk.url = "git+ssh://git@github.com/logos-co/logos-cpp-sdk.git?rev=e855512c77dadddf1436f2eea2fd5b8c6ac324bf";
-    #logos-package-manager.url = "path:/Users/iurimatias/Projects/Logos/LogosCore/logos-package-manager";
-    logos-package-manager.url = "git+ssh://git@github.com/logos-co/logos-package-manager.git";
-    logos-capability-module.url = "git+ssh://git@github.com/logos-co/logos-capability-module.git";
-    logos-waku-module.url = "git+ssh://git@github.com/logos-co/logos-waku-module.git?ref=update_flake";
+    # Follow the same nixpkgs as logos-liblogos to ensure compatibility
+    nixpkgs.follows = "logos-liblogos/nixpkgs";
+    logos-liblogos.url = "github:logos-co/logos-liblogos";
+    logos-cpp-sdk.url = "github:logos-co/logos-cpp-sdk";
+    logos-package-manager.url = "github:logos-co/logos-package-manager";
+    logos-capability-module.url = "github:logos-co/logos-capability-module";
+    logos-waku-module.url = "github:logos-co/logos-waku-module";
   };
 
   outputs = { self, nixpkgs, logos-liblogos, logos-cpp-sdk, logos-package-manager, logos-capability-module, logos-waku-module }:
@@ -47,6 +47,8 @@
             pkgs.qt6.qtremoteobjects
             pkgs.zstd
             pkgs.krb5
+            pkgs.protobuf
+            pkgs.abseil-cpp
             liblogos
             cppSdk
             wakuModule
@@ -87,6 +89,92 @@
             test -d "${wakuModule}" || (echo "waku-module not found" && exit 1)
             
             
+            # Create a temporary directory for generated files and modules
+            mkdir -p "$PWD/generated"
+            mkdir -p "$PWD/temp_modules"
+            mkdir -p "$PWD/cpp_sdk_src"
+            export GENERATED_SDK_DIR="$PWD/generated"
+            
+            # Check if cpp-sdk headers are available
+            if [ ! -f "${cppSdk}/include/logos_api.h" ]; then
+              echo "Warning: cpp-sdk headers not found at ${cppSdk}/include/"
+              echo "Checking for headers in other locations..."
+              
+              # Check if headers exist in the cpp-sdk package
+              find "${cppSdk}" -name "logos_api.h" 2>/dev/null || echo "logos_api.h not found in cpp-sdk package"
+              
+              # List what's actually in the cpp-sdk package
+              echo "Contents of cpp-sdk package:"
+              ls -la "${cppSdk}/" || true
+              ls -la "${cppSdk}/include/" 2>/dev/null || echo "No include directory"
+              ls -la "${cppSdk}/lib/" 2>/dev/null || echo "No lib directory"
+            else
+              echo "Found cpp-sdk headers at ${cppSdk}/include/"
+            fi
+            
+            # Determine platform-specific plugin extension
+            OS_EXT="so"
+            case "$(uname -s)" in
+              Darwin)
+                OS_EXT="dylib";;
+              Linux)
+                OS_EXT="so";;
+              MINGW*|MSYS*|CYGWIN*)
+                OS_EXT="dll";;
+            esac
+            
+            # Symlink dependency plugins to temp directory for generator
+            ln -s "${packageManager}/lib/logos/modules/package_manager_plugin.$OS_EXT" "$PWD/temp_modules/package_manager_plugin.$OS_EXT" || true
+            ln -s "${capabilityModule}/lib/logos/modules/capability_module_plugin.$OS_EXT" "$PWD/temp_modules/capability_module_plugin.$OS_EXT" || true
+            
+            # Copy libwaku to temp directory
+            if ls "${wakuModule}/lib/logos/modules/"libwaku.* >/dev/null 2>&1; then
+              cp -L "${wakuModule}/lib/logos/modules/"libwaku.* "$PWD/temp_modules/" || true
+            fi
+            
+            # Copy and fix waku plugin (can't symlink because we need to modify it)
+            if [ -f "${wakuModule}/lib/logos/modules/waku_module_plugin.$OS_EXT" ]; then
+              cp "${wakuModule}/lib/logos/modules/waku_module_plugin.$OS_EXT" "$PWD/temp_modules/waku_module_plugin.$OS_EXT"
+              
+              # Fix the library path on macOS before running the generator
+              if [ "$(uname -s)" = "Darwin" ]; then
+                if command -v install_name_tool >/dev/null 2>&1; then
+                  # Find the correct libwaku path in temp directory
+                  WAKU_LIB_PATH=$(find "$PWD/temp_modules" -name "libwaku.*" -type f | head -1)
+                  if [ -n "$WAKU_LIB_PATH" ]; then
+                    echo "Fixing waku_module_plugin to use libwaku at: $WAKU_LIB_PATH"
+                    
+                    # Check and fix library references
+                    echo "Current library references in waku_module_plugin:"
+                    otool -L "${wakuModule}/lib/logos/modules/waku_module_plugin.$OS_EXT" | grep libwaku || echo "No libwaku references found"
+                    
+                    # Try to fix any libwaku references that don't point to the Nix store
+                    otool -L "${wakuModule}/lib/logos/modules/waku_module_plugin.$OS_EXT" | grep libwaku | while read line; do
+                      OLD_PATH=$(echo "$line" | sed 's/^[[:space:]]*//' | cut -d' ' -f1)
+                      if [[ "$OLD_PATH" != /nix/store/* ]]; then
+                        echo "Fixing library reference: $OLD_PATH -> $WAKU_LIB_PATH"
+                        install_name_tool -change "$OLD_PATH" "$WAKU_LIB_PATH" "$PWD/temp_modules/waku_module_plugin.$OS_EXT" || true
+                      fi
+                    done
+                  fi
+                fi
+              fi
+            fi
+            
+            # Run cpp generator BEFORE cmake to generate SDK wrappers
+            echo "Running cpp generator on metadata.json..."
+            echo "Temp module directory contents:"
+            ls -la "$PWD/temp_modules/"
+            "${cppSdk}/bin/logos-cpp-generator" --metadata ./metadata.json --module-dir "$PWD/temp_modules"
+            
+            # Copy generated files to the generated directory for cmake to find
+            echo "Copying generated files..."
+            if [ -d "./logos-cpp-sdk/cpp/generated" ]; then
+              cp -r "./logos-cpp-sdk/cpp/generated"/* "$PWD/generated/" || true
+              echo "Generated SDK files:"
+              ls -la "$PWD/generated/"
+            fi
+            
             cmake -S . -B build \
               -GNinja \
               -DCMAKE_BUILD_TYPE=Release \
@@ -106,129 +194,23 @@
           '';
           
           installPhase = ''
-            set -euo pipefail
-            mkdir -p $out
-            echo "Logos Waku Module - All components compiled successfully" > $out/README.txt
-            echo "liblogos: ${liblogos}" >> $out/README.txt
-            echo "cpp-sdk: ${cppSdk}" >> $out/README.txt
-            echo "package-manager: ${packageManager}" >> $out/README.txt
-            echo "capability-module: ${capabilityModule}" >> $out/README.txt
-            echo "waku-module: ${wakuModule}" >> $out/README.txt
-
-            # Prepare runtime layout
-            mkdir -p "$out/bin" "$out/lib" "$out/bin/modules" "$out/modules"
+            runHook preInstall
             
-            # Install our custom binary
-            if [ -f "build/bin/logos-chat-module" ]; then
-              cp build/bin/logos-chat-module "$out/bin/"
-              echo "Installed logos-chat-module binary"
-            fi
+            mkdir -p $out/lib
             
-            # Also copy the original binaries from liblogos for reference
-            if [ -f "${liblogos}/bin/logoscore" ]; then
-              cp -L "${liblogos}/bin/logoscore" "$out/bin/logoscore"
-            fi
-            if [ -f "${liblogos}/bin/logos_host" ]; then
-              cp -L "${liblogos}/bin/logos_host" "$out/bin/logos_host"
-            fi
-
-            # Copy core shared library to lib for RPATH resolution
-            if ls "${liblogos}/lib/"liblogos_core.* >/dev/null 2>&1; then
-              cp -L "${liblogos}/lib/"liblogos_core.* "$out/lib/" || true
-            fi
-
-            # Symlink libwaku library to modules directory alongside the plugin
-            if ls "${wakuModule}/lib/logos/modules/"libwaku.* >/dev/null 2>&1; then
-              ln -s "${wakuModule}/lib/logos/modules/"libwaku.* "$out/bin/modules/" || true
-              ln -s "${wakuModule}/lib/logos/modules/"libwaku.* "$out/modules/" || true
-            fi
-
-            # Determine platform-specific plugin extension
-            OS_EXT="so"
-            case "$(uname -s)" in
-              Darwin)
-                OS_EXT="dylib";;
-              Linux)
-                OS_EXT="so";;
-              MINGW*|MSYS*|CYGWIN*)
-                OS_EXT="dll";;
-            esac
-
-            # Fix library paths for waku module plugin
-            echo "Fixing library paths for waku module plugin..."
-            if [ -f "${wakuModule}/lib/logos/modules/waku_module_plugin.$OS_EXT" ]; then
-              # Copy the plugin to fix its library references
-              cp "${wakuModule}/lib/logos/modules/waku_module_plugin.$OS_EXT" "$out/bin/modules/waku_module_plugin.$OS_EXT"
-              cp "${wakuModule}/lib/logos/modules/waku_module_plugin.$OS_EXT" "$out/modules/waku_module_plugin.$OS_EXT"
-              
-              # Fix the library path on macOS
-              if [ "$(uname -s)" = "Darwin" ]; then
-                if command -v install_name_tool >/dev/null 2>&1; then
-                  # Find the correct libwaku path
-                  WAKU_LIB_PATH=$(find "${wakuModule}" -name "libwaku.*" -type f | head -1)
-                  if [ -n "$WAKU_LIB_PATH" ]; then
-                    echo "Fixing waku_module_plugin to use libwaku at: $WAKU_LIB_PATH"
-                    
-                    # Check what library references exist in the plugin
-                    echo "Current library references in waku_module_plugin:"
-                    otool -L "${wakuModule}/lib/logos/modules/waku_module_plugin.$OS_EXT" | grep libwaku || echo "No libwaku references found"
-                    
-                    # Try to fix any libwaku references that don't point to the Nix store
-                    otool -L "${wakuModule}/lib/logos/modules/waku_module_plugin.$OS_EXT" | grep libwaku | while read line; do
-                      OLD_PATH=$(echo "$line" | sed 's/^[[:space:]]*//' | cut -d' ' -f1)
-                      if [[ "$OLD_PATH" != /nix/store/* ]]; then
-                        echo "Fixing library reference: $OLD_PATH -> $WAKU_LIB_PATH"
-                        install_name_tool -change "$OLD_PATH" "$WAKU_LIB_PATH" "$out/bin/modules/waku_module_plugin.$OS_EXT" || true
-                        install_name_tool -change "$OLD_PATH" "$WAKU_LIB_PATH" "$out/modules/waku_module_plugin.$OS_EXT" || true
-                      fi
-                    done
-                  fi
-                fi
-              fi
-            fi
-
-            # Symlink plugins into both expected locations
-            ln -s "${packageManager}/lib/logos/modules/package_manager_plugin.$OS_EXT" "$out/bin/modules/package_manager_plugin.$OS_EXT" || true
-            ln -s "${capabilityModule}/lib/logos/modules/capability_module_plugin.$OS_EXT" "$out/bin/modules/capability_module_plugin.$OS_EXT" || true
-            ln -s "${packageManager}/lib/logos/modules/package_manager_plugin.$OS_EXT" "$out/modules/package_manager_plugin.$OS_EXT" || true
-            ln -s "${capabilityModule}/lib/logos/modules/capability_module_plugin.$OS_EXT" "$out/modules/capability_module_plugin.$OS_EXT" || true
-
-            # Run cpp generator on metadata.json after modules are symlinked
-            echo "Running cpp generator on metadata.json..."
-            echo "Module directory contents:"
-            ls -la "$out/modules/"
-            "${cppSdk}/bin/logos-cpp-generator" --metadata ./metadata.json --module-dir "$out/modules"
-
-            # Copy generated files to output directory
-            echo "Copying generated SDK files..."
-            mkdir -p "$out/generated"
-            
-            # The generator creates files in the source directory, so we need to copy from there
-            if [ -d "./logos-cpp-sdk/cpp/generated" ]; then
-              cp -r "./logos-cpp-sdk/cpp/generated"/* "$out/generated/" || true
-              echo "Generated SDK files copied to $out/generated/"
-              ls -la "$out/generated/"
-            elif [ -d "${cppSdk}/cpp/generated" ]; then
-              cp -r "${cppSdk}/cpp/generated"/* "$out/generated/" || true
-              echo "Generated SDK files copied to $out/generated/"
-              ls -la "$out/generated/"
+            # Install our chat plugin library
+            if [ -f "build/modules/chat_plugin.dylib" ] || [ -f "build/modules/chat_plugin.so" ]; then
+              cp build/modules/chat_plugin.* "$out/lib/" 2>/dev/null || true
+              echo "Installed chat_plugin library to $out/lib/"
             else
-              echo "Warning: Generated directory not found. Checking current directory:"
-              find . -name "generated" -type d 2>/dev/null || echo "No generated directories found"
+              echo "Warning: chat_plugin library not found"
             fi
-
-            # Helpful message
-            echo "Installed runtime to $out"
-            echo " - binaries in $out/bin"
-            echo " - core lib in $out/lib"
-            echo " - plugins in $out/bin/modules and $out/modules"
-
-            # Ensure the subsequent fixup hooks run without nounset interfering
-            set +u
+            
+            runHook postInstall
           '';
           
           meta = with pkgs.lib; {
-            description = "Logos Waku Module - Pulls and compiles logos-liblogos, logos-package-manager, and logos-capability-module";
+            description = "Logos Chat Module - A chat plugin for Logos using Waku";
             platforms = platforms.unix;
           };
         };
