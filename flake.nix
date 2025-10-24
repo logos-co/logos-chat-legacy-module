@@ -32,13 +32,25 @@
           lib = import ./nix/lib.nix { 
             inherit pkgs common src logosWakuModule logosSdk; 
           };
+
+          # Include package (generated headers from plugin)
+          include = import ./nix/include.nix {
+            inherit pkgs common src lib logosSdk;
+          };
+
+          # Combined package
+          combined = pkgs.symlinkJoin {
+            name = "logos-chat-module";
+            paths = [ lib include ];
+          };
         in
         {
-          # Individual output
+          # Individual outputs
           logos-chat-module-lib = lib;
+          logos-chat-module-include = include;
           
-          # Default package
-          default = lib;
+          # Default package (combined)
+          default = combined;
         }
       );
 
