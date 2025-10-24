@@ -6,19 +6,21 @@
     nixpkgs.follows = "logos-liblogos/nixpkgs";
     logos-cpp-sdk.url = "github:logos-co/logos-cpp-sdk";
     logos-liblogos.url = "github:logos-co/logos-liblogos";
+    logos-waku-module.url = "github:logos-co/logos-waku-module";
   };
 
-  outputs = { self, nixpkgs, logos-cpp-sdk, logos-liblogos }:
+  outputs = { self, nixpkgs, logos-cpp-sdk, logos-liblogos, logos-waku-module }:
     let
       systems = [ "aarch64-darwin" "x86_64-darwin" "aarch64-linux" "x86_64-linux" ];
       forAllSystems = f: nixpkgs.lib.genAttrs systems (system: f {
         pkgs = import nixpkgs { inherit system; };
         logosSdk = logos-cpp-sdk.packages.${system}.default;
         logosLiblogos = logos-liblogos.packages.${system}.default;
+        logosWakuModule = logos-waku-module.packages.${system}.default;
       });
     in
     {
-      packages = forAllSystems ({ pkgs, logosSdk, logosLiblogos }: 
+      packages = forAllSystems ({ pkgs, logosSdk, logosLiblogos, logosWakuModule }: 
         let
           # Common configuration
           common = import ./nix/default.nix { 
@@ -40,7 +42,7 @@
         }
       );
 
-      devShells = forAllSystems ({ pkgs, logosSdk, logosLiblogos }: {
+      devShells = forAllSystems ({ pkgs, logosSdk, logosLiblogos, logosWakuModule }: {
         default = pkgs.mkShell {
           nativeBuildInputs = [
             pkgs.cmake
