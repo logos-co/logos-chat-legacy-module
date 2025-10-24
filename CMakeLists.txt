@@ -88,7 +88,7 @@ set(METADATA_JSON "${CMAKE_CURRENT_SOURCE_DIR}/metadata.json")
 if(_cpp_sdk_is_source)
     # Source layout: build and run the generator
     # Generate into build directory
-    set(PLUGINS_OUTPUT_DIR "${CMAKE_BINARY_DIR}/some_folder")
+    set(PLUGINS_OUTPUT_DIR "${CMAKE_BINARY_DIR}/generated_code")
     set(CPP_GENERATOR_BUILD_DIR "${LOGOS_DEPS_ROOT}/build/cpp-generator")
     set(CPP_GENERATOR "${CPP_GENERATOR_BUILD_DIR}/bin/logos-cpp-generator")
     
@@ -110,8 +110,8 @@ if(_cpp_sdk_is_source)
     add_dependencies(run_cpp_generator_chat cpp_generator_build)
 else()
     # Installed/nix layout: files are already in source tree from lib.nix preConfigure
-    # lib.nix creates ./some_folder in source directory before CMake runs
-    set(PLUGINS_OUTPUT_DIR "${CMAKE_CURRENT_SOURCE_DIR}/some_folder")
+    # lib.nix creates ./generated_code in source directory before CMake runs
+    set(PLUGINS_OUTPUT_DIR "${CMAKE_CURRENT_SOURCE_DIR}/generated_code")
 endif()
 
 # Find Protocol Buffers
@@ -222,7 +222,7 @@ if(_cpp_sdk_is_source)
     )
 else()
     # For nix builds, also include the include subdirectory
-    # (lib.nix moves header files to ./some_folder/include/)
+    # (lib.nix moves header files to ./generated_code/include/)
     target_include_directories(chat_module_plugin PRIVATE 
         ${LOGOS_CPP_SDK_ROOT}/include
         ${LOGOS_CPP_SDK_ROOT}/include/cpp
