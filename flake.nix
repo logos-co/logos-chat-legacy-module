@@ -30,7 +30,7 @@
           
           # Library package
           lib = import ./nix/lib.nix { 
-            inherit pkgs common src; 
+            inherit pkgs common src logosWakuModule logosSdk; 
           };
         in
         {
