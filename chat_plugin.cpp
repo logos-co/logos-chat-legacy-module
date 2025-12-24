@@ -5,29 +5,36 @@
 #include <QString>
 #include "logos_api_client.h"
 
-ChatPlugin::ChatPlugin() : currentRelayTopic("/waku/2/rs/16/32") {
+ChatPlugin::ChatPlugin() : currentRelayTopic("")
+{
 }
 
-ChatPlugin::~ChatPlugin() {
-    if (logos) {
+ChatPlugin::~ChatPlugin()
+{
+    if (logos)
+    {
         delete logos;
         logos = nullptr;
     }
-    if (logosAPI) {
+    if (logosAPI)
+    {
         delete logosAPI;
         logosAPI = nullptr;
     }
 }
 
-bool ChatPlugin::ensureLogosContext(const char* caller) const {
+bool ChatPlugin::ensureLogosContext(const char *caller) const
+{
     const QString context = QString::fromLatin1(caller ? caller : "unknown");
 
-    if (!logosAPI) {
+    if (!logosAPI)
+    {
         qWarning() << "ChatPlugin:" << context << "- LogosAPI not initialized";
         return false;
     }
 
-    if (!logos) {
+    if (!logos)
+    {
         qWarning() << "ChatPlugin:" << context << "- LogosModules not initialized";
         return false;
     }
@@ -35,32 +42,39 @@ bool ChatPlugin::ensureLogosContext(const char* caller) const {
     return true;
 }
 
-bool ChatPlugin::initialize() {
-    if (!ensureLogosContext("initialize")) {
+bool ChatPlugin::initialize()
+{
+    if (!ensureLogosContext("initialize"))
+    {
         return false;
     }
 
-    MessageCallback actualCallback = [this](const std::string& timestamp, const std::string& nick, const std::string& message) {
+    MessageCallback actualCallback = [this](const std::string &timestamp, const std::string &nick, const std::string &message)
+    {
         QVariantList data;
         data << QString::fromStdString(timestamp) << QString::fromStdString(nick) << QString::fromStdString(message);
 
         emitEvent(QStringLiteral("chatMessage"), data);
     };
 
-    void* result = ::initAndStart(logosAPI, logos, currentRelayTopic, actualCallback);
+    void *result = ::initAndStart(logosAPI, logos, currentRelayTopic, actualCallback);
 
     return (result != nullptr);
 }
 
-bool ChatPlugin::joinChannel(const QString& channelName) {
-    if (!ensureLogosContext("joinChannel")) {
+bool ChatPlugin::joinChannel(const QString &channelName)
+{
+    if (!ensureLogosContext("joinChannel"))
+    {
         return false;
     }
     return ::joinChannel(logosAPI, logos, channelName.toStdString(), currentRelayTopic);
 }
 
-void ChatPlugin::sendMessage(const QString& channelName, const QString& username, const QString& message) {
-    if (!ensureLogosContext("sendMessage")) {
+void ChatPlugin::sendMessage(const QString &channelName, const QString &username, const QString &message)
+{
+    if (!ensureLogosContext("sendMessage"))
+    {
         return;
     }
     std::cout << "ChatPlugin::sendMessage called with channelName: " << channelName.toStdString()
@@ -69,12 +83,15 @@ void ChatPlugin::sendMessage(const QString& channelName, const QString& username
     ::sendMessage(logosAPI, logos, channelName.toStdString(), username.toStdString(), message.toStdString());
 }
 
-bool ChatPlugin::retrieveHistory(const std::string& channelName) {
-    if (!ensureLogosContext("retrieveHistory")) {
+bool ChatPlugin::retrieveHistory(const std::string &channelName)
+{
+    if (!ensureLogosContext("retrieveHistory"))
+    {
         return false;
     }
 
-    MessageCallback actualCallback = [this](const std::string& timestamp, const std::string& nick, const std::string& message) {
+    MessageCallback actualCallback = [this](const std::string &timestamp, const std::string &nick, const std::string &message)
+    {
         QVariantList data;
         data << QString::fromStdString(timestamp) << QString::fromStdString(nick) << QString::fromStdString(message);
 
@@ -85,33 +102,41 @@ bool ChatPlugin::retrieveHistory(const std::string& channelName) {
     return true;
 }
 
-bool ChatPlugin::retrieveHistory(const QString& channelName) {
+bool ChatPlugin::retrieveHistory(const QString &channelName)
+{
     return retrieveHistory(channelName.toStdString());
 }
 
-void ChatPlugin::initLogos(LogosAPI* logosAPIInstance) {
-    if (logos) {
+void ChatPlugin::initLogos(LogosAPI *logosAPIInstance)
+{
+    if (logos)
+    {
         delete logos;
         logos = nullptr;
     }
-    if (logosAPI) {
+    if (logosAPI)
+    {
         delete logosAPI;
         logosAPI = nullptr;
     }
     logosAPI = logosAPIInstance;
-    if (logosAPI) {
+    if (logosAPI)
+    {
         logos = new LogosModules(logosAPI);
     }
 }
 
-void ChatPlugin::emitEvent(const QString& eventName, const QVariantList& data) {
-    if (!logosAPI) {
+void ChatPlugin::emitEvent(const QString &eventName, const QVariantList &data)
+{
+    if (!logosAPI)
+    {
         qWarning() << "ChatPlugin: LogosAPI not available, cannot emit" << eventName;
         return;
     }
 
-    LogosAPIClient* client = logosAPI->getClient("chat");
-    if (!client) {
+    LogosAPIClient *client = logosAPI->getClient("chat");
+    if (!client)
+    {
         qWarning() << "ChatPlugin: Failed to get chat client for event" << eventName;
         return;
     }

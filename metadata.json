@@ -1,12 +1,14 @@
 {
   "name": "chat",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "A chat plugin for Logos",
   "author": "Logos Core Team",
   "type": "core",
   "category": "chat",
   "main": "chat_plugin",
-  "dependencies": ["waku_module"],
+  "dependencies": [
+    "waku_module"
+  ],
   "build": {
     "type": "cmake",
     "files": [
@@ -15,4 +17,4 @@
     ]
   },
   "capabilities": []
-} 
+}
