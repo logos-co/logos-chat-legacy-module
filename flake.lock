@@ -130,14 +130,18 @@
         ]
       },
       "locked": {
-        "lastModified": 1766564257,
-        "narHash": "sha256-kE+e72iVFgaWD0JuaWixmJJvYoxuGl7YoDtXc1M3ITs=",
-        "path": "/Users/prem/Code/logos-waku-module",
-        "type": "path"
+        "lastModified": 1766564057,
+        "narHash": "sha256-se7RkggiAg7+KLsBOC29D4pwMETPFVZGPfiGDRxRz0g=",
+        "owner": "logos-co",
+        "repo": "logos-waku-module",
+        "rev": "be8ca932deca3e35c03b5ccdb4635376cb5a2999",
+        "type": "github"
       },
       "original": {
-        "path": "/Users/prem/Code/logos-waku-module",
-        "type": "path"
+        "owner": "logos-co",
+        "ref": "logos-testnet-demo",
+        "repo": "logos-waku-module",
+        "type": "github"
       }
     },
     "nixpkgs": {
