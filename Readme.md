@@ -22,7 +22,7 @@ The result will include:
 
 ```bash
 # Build only the library (plugin)
-nix build '.#logos-chat-module-lib'
+nix build '.#lib'
 
 # Build only the generated headers
 nix build '.#logos-chat-module-include'
