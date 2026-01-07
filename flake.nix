@@ -49,7 +49,8 @@
           # Individual outputs
           logos-chat-module-lib = lib;
           logos-chat-module-include = include;
-          
+          lib = lib;
+
           # Default package (combined)
           default = combined;
         }
