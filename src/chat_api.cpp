@@ -457,7 +457,7 @@ void *initAndStart(LogosAPI *logosAPI, LogosModules *logos, const std::string &r
         "tcpPort": 60010,
         "key": null,
         "clusterId": 2,
-        "relay": false,
+        "relay": true,
         "mix": true,
         "shards": [0],
         "discv5Discovery": false,
@@ -618,8 +618,8 @@ bool joinChannel(LogosAPI *logosAPI, LogosModules *logos, const std::string &cha
     std::cout << "Joining channel: " << channelName << std::endl;
     std::cout << "Subscribing to content topic: " << contentTopic << std::endl;
 
-    if (!wakuModule.filterSubscribe(QString::fromStdString(relayTopic),
-                                    QString::fromStdString(contentTopic)))
+    if (!wakuModule.relaySubscribe(QString::fromStdString(contentTopic),
+                                   QString::fromStdString(relayTopic)))
     {
         std::cerr << "Failed to subscribe to content topic: " << contentTopic << std::endl;
         return false;
