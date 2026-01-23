@@ -1,0 +1,30 @@
+# Chat Module Configuration
+name: chat
+version: 1.0.0
+type: core
+category: chat
+description: "A chat plugin for Logos using Waku"
+
+# Depends on the Waku module for messaging
+dependencies:
+  - waku_module
+
+# Nix packages for protobuf support
+nix_packages:
+  build:
+    - protobuf
+    - abseil-cpp
+  runtime:
+    - zstd
+    - krb5
+
+# No external libraries (uses waku via module dependency)
+external_libraries: []
+
+# CMake configuration (protobuf handled in CMakeLists.txt)
+cmake:
+  find_packages:
+    - Threads
+  extra_sources:
+    - src/chat_api.cpp
+    - src/chat_api.h
