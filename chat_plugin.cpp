@@ -57,6 +57,15 @@ bool ChatPlugin::initialize()
         emitEvent(QStringLiteral("chatMessage"), data);
     };
 
+    // Subscribe to network metrics events once during initialization
+    logos->waku_module.on("mixnodePoolSizeResponse", [this](const QVariantList &data) {
+        emitEvent(QStringLiteral("mixnodePoolSizeResponse"), data);
+    });
+
+    logos->waku_module.on("lightpushPeersCountResponse", [this](const QVariantList &data) {
+        emitEvent(QStringLiteral("lightpushPeersCountResponse"), data);
+    });
+
     void *result = ::initAndStart(logosAPI, logos, currentRelayTopic, actualCallback);
 
     return (result != nullptr);
@@ -151,11 +160,6 @@ bool ChatPlugin::getMixnodePoolSize()
         return false;
     }
 
-    // Subscribe to the waku_module event and forward it
-    logos->waku_module.on("mixnodePoolSizeResponse", [this](const QVariantList &data) {
-        emitEvent(QStringLiteral("mixnodePoolSizeResponse"), data);
-    });
-
     return logos->waku_module.getMixnodePoolSize();
 }
 
@@ -165,11 +169,6 @@ bool ChatPlugin::getLightpushPeersCount()
     {
         return false;
     }
-
-    // Subscribe to the waku_module event and forward it
-    logos->waku_module.on("lightpushPeersCountResponse", [this](const QVariantList &data) {
-        emitEvent(QStringLiteral("lightpushPeersCountResponse"), data);
-    });
 
     return logos->waku_module.getLightpushPeersCount();
 }
