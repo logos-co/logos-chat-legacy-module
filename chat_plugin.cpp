@@ -143,3 +143,33 @@ void ChatPlugin::emitEvent(const QString &eventName, const QVariantList &data)
 
     client->onEventResponse(this, eventName, data);
 }
+
+bool ChatPlugin::getMixnodePoolSize()
+{
+    if (!ensureLogosContext("getMixnodePoolSize"))
+    {
+        return false;
+    }
+
+    // Subscribe to the waku_module event and forward it
+    logos->waku_module.on("mixnodePoolSizeResponse", [this](const QVariantList &data) {
+        emitEvent(QStringLiteral("mixnodePoolSizeResponse"), data);
+    });
+
+    return logos->waku_module.getMixnodePoolSize();
+}
+
+bool ChatPlugin::getLightpushPeersCount()
+{
+    if (!ensureLogosContext("getLightpushPeersCount"))
+    {
+        return false;
+    }
+
+    // Subscribe to the waku_module event and forward it
+    logos->waku_module.on("lightpushPeersCountResponse", [this](const QVariantList &data) {
+        emitEvent(QStringLiteral("lightpushPeersCountResponse"), data);
+    });
+
+    return logos->waku_module.getLightpushPeersCount();
+}

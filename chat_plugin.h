@@ -27,6 +27,10 @@ public:
     Q_INVOKABLE bool retrieveHistory(const std::string& channelName) override;
     Q_INVOKABLE bool retrieveHistory(const QString& channelName);
 
+    // Network metrics
+    Q_INVOKABLE bool getMixnodePoolSize() override;
+    Q_INVOKABLE bool getLightpushPeersCount() override;
+
     // LogosAPI initialization
     Q_INVOKABLE void initLogos(LogosAPI* logosAPIInstance);
 
