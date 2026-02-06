@@ -434,8 +434,98 @@ void sendMessage(LogosAPI *logosAPI, LogosModules *logos, const std::string &cha
     }
 }
 
+// Build Waku configuration based on discovery mode
+// mixnodes: list of "multiaddr:mixPubKey" strings from UI configuration
+std::string buildWakuConfig(DiscoveryMode discoveryMode, const std::vector<std::string>& bootstrapNodes, const std::vector<std::string>& mixnodes)
+{
+    std::ostringstream config;
+    config << "{\n";
+    config << "    \"host\": \"0.0.0.0\",\n";
+    config << "    \"tcpPort\": 60010,\n";
+    config << "    \"key\": null,\n";
+    config << "    \"clusterId\": 2,\n";
+    config << "    \"relay\": true,\n";
+    config << "    \"mix\": true,\n";
+    config << "    \"shards\": [0],\n";
+    config << "    \"numShardsInNetwork\": 1,\n";
+    config << "    \"logLevel\": \"DEBUG\",\n";
+    config << "    \"keepAlive\": true,\n";
+    config << "    \"discv5Discovery\": false,\n";
+    config << "    \"discv5EnrAutoUpdate\": false,\n";
+
+    // Configure based on discovery mode
+    switch (discoveryMode) {
+        case DiscoveryMode::ExtKadOnly:
+            // Extended Kademlia only - no mixnodes config, use Kad to discover them
+            config << "    \"enableKadDiscovery\": true,\n";
+            config << "    \"rendezvous\": false,\n";
+            config << "    \"peerExchange\": false,\n";
+            // Add kadBootstrapNodes from UI bootstrap nodes
+            config << "    \"kadBootstrapNodes\": [";
+            for (size_t i = 0; i < bootstrapNodes.size(); ++i) {
+                config << "\"" << bootstrapNodes[i] << "\"";
+                if (i < bootstrapNodes.size() - 1) config << ", ";
+            }
+            config << "],\n";
+            // Static nodes for initial connectivity
+            config << "    \"staticnodes\": [";
+            for (size_t i = 0; i < bootstrapNodes.size() && i < 2; ++i) {
+                config << "\"" << bootstrapNodes[i] << "\"";
+                if (i < 1 && bootstrapNodes.size() > 1) config << ", ";
+            }
+            config << "]\n";
+            break;
+
+        case DiscoveryMode::StdDiscovery:
+            // Standard Discovery - Rendezvous + Peer Exchange, with mixnodes configured
+            config << "    \"enableKadDiscovery\": false,\n";
+            config << "    \"rendezvous\": true,\n";
+            config << "    \"peerExchange\": true,\n";
+            // Static nodes for initial connectivity
+            config << "    \"staticnodes\": [";
+            for (size_t i = 0; i < bootstrapNodes.size() && i < 2; ++i) {
+                config << "\"" << bootstrapNodes[i] << "\"";
+                if (i < 1 && bootstrapNodes.size() > 1) config << ", ";
+            }
+            config << "],\n";
+            // Include mixnodes config from UI 
+            config << "    \"mixnodes\": [";
+            for (size_t i = 0; i < mixnodes.size(); ++i) {
+                config << "\"" << mixnodes[i] << "\"";
+                if (i < mixnodes.size() - 1) config << ", ";
+            }
+            config << "]\n";
+            break;
+
+        case DiscoveryMode::All:
+            // All discovery methods - Kad + Rendezvous + Peer Exchange
+            config << "    \"enableKadDiscovery\": true,\n";
+            config << "    \"rendezvous\": true,\n";
+            config << "    \"peerExchange\": true,\n";
+            // Add kadBootstrapNodes from UI bootstrap nodes
+            config << "    \"kadBootstrapNodes\": [";
+            for (size_t i = 0; i < bootstrapNodes.size(); ++i) {
+                config << "\"" << bootstrapNodes[i] << "\"";
+                if (i < bootstrapNodes.size() - 1) config << ", ";
+            }
+            config << "],\n";
+            // Static nodes for initial connectivity
+            config << "    \"staticnodes\": [";
+            for (size_t i = 0; i < bootstrapNodes.size() && i < 2; ++i) {
+                config << "\"" << bootstrapNodes[i] << "\"";
+                if (i < 1 && bootstrapNodes.size() > 1) config << ", ";
+            }
+            config << "]\n";
+            break;
+    }
+
+    config << "}";
+    return config.str();
+}
+
 // Function to initialize and start a Waku node
-void *initAndStart(LogosAPI *logosAPI, LogosModules *logos, const std::string &relayTopic, MessageCallback messageCallback)
+void *initAndStart(LogosAPI *logosAPI, LogosModules *logos, const std::string &relayTopic, MessageCallback messageCallback,
+                   DiscoveryMode discoveryMode, const std::vector<std::string>& bootstrapNodes, const std::vector<std::string>& mixnodes)
 {
     if (!logosAPI)
     {
@@ -451,30 +541,12 @@ void *initAndStart(LogosAPI *logosAPI, LogosModules *logos, const std::string &r
 
     auto &wakuModule = logos->waku_module;
 
-    // Create appropriate Waku config
-    std::string configStr = R"({
-        "host": "0.0.0.0",
-        "tcpPort": 60010,
-        "key": null,
-        "clusterId": 2,
-        "relay": true,
-        "mix": true,
-        "shards": [0],
-        "discv5Discovery": false,
-        "numShardsInNetwork": 1,
-        "discv5EnrAutoUpdate": false,
-        "logLevel": "DEBUG",
-        "keepAlive": true,
-        "staticnodes":[
-        "/ip4/127.0.0.1/tcp/60002/p2p/16Uiu2HAmLtKaFaSWDohToWhWUZFLtqzYZGPFuXwKrojFVF6az5UF",
-        "/ip4/127.0.0.1/tcp/60003/p2p/16Uiu2HAmTEDHwAziWUSz6ZE23h5vxG2o4Nn7GazhMor4bVuMXTrA"],
-        "mixnodes":[
-        "/ip4/127.0.0.1/tcp/60002/p2p/16Uiu2HAmLtKaFaSWDohToWhWUZFLtqzYZGPFuXwKrojFVF6az5UF:9231e86da6432502900a84f867004ce78632ab52cd8e30b1ec322cd795710c2a",
-        "/ip4/127.0.0.1/tcp/60003/p2p/16Uiu2HAmTEDHwAziWUSz6ZE23h5vxG2o4Nn7GazhMor4bVuMXTrA:275cd6889e1f29ca48e5b9edb800d1a94f49f13d393a0ecf1a07af753506de6c",
-        "/ip4/127.0.0.1/tcp/60004/p2p/16Uiu2HAmPwRKZajXtfb1Qsv45VVfRZgK3ENdfmnqzSrVm3BczF6f:e0ed594a8d506681be075e8e23723478388fb182477f7a469309a25e7076fc18",
-        "/ip4/127.0.0.1/tcp/60005/p2p/16Uiu2HAmRhxmCHBYdXt1RibXrjAUNJbduAhzaTHwFCZT4qWnqZAu:8fd7a1a7c19b403d231452a9b1ea40eb1cc76f455d918ef8980e7685f9eeeb1f",
-        "/ip4/127.0.0.1/tcp/60001/p2p/16Uiu2HAmPiEs2ozjjJF2iN2Pe2FYeMC9w4caRHKYdLdAfjgbWM6o:9d09ce624f76e8f606265edb9cca2b7de9b41772a6d784bddaf92ffa8fba7d2c"]
-    })";
+    // Build Waku config based on discovery mode
+    std::string configStr = buildWakuConfig(discoveryMode, bootstrapNodes, mixnodes);
+
+    std::cout << "Discovery mode: " << static_cast<int>(discoveryMode) << std::endl;
+    std::cout << "Bootstrap nodes count: " << bootstrapNodes.size() << std::endl;
+    std::cout << "Mixnodes count: " << mixnodes.size() << std::endl;
 
     std::cout << "Waku node config: " << configStr << std::endl;
     std::cout << "Found Waku Plugin, initializing" << std::endl;

@@ -42,12 +42,31 @@ bool ChatPlugin::ensureLogosContext(const char *caller) const
     return true;
 }
 
-bool ChatPlugin::initialize()
+bool ChatPlugin::initialize(int mode, const QString& bootstrapNodes, const QString& mixnodes)
 {
     if (!ensureLogosContext("initialize"))
     {
         return false;
     }
+    // Parse comma-separated strings and convert to std::vector<std::string>
+    QStringList bootstrapNodesList = bootstrapNodes.split(",", Qt::SkipEmptyParts);
+    QStringList mixnodesList = mixnodes.split(",", Qt::SkipEmptyParts);
+    
+    std::vector<std::string> bootstrapNodesVec;
+    for (const QString& node : bootstrapNodesList) {
+        bootstrapNodesVec.push_back(node.trimmed().toStdString());
+    }
+    
+    std::vector<std::string> mixnodesVec;
+    for (const QString& mixnode : mixnodesList) {
+        mixnodesVec.push_back(mixnode.trimmed().toStdString());
+    }
+    
+    DiscoveryMode discoveryMode = static_cast<DiscoveryMode>(mode);
+
+    qDebug() << "ChatPlugin::initialize - mode:" << mode
+             << ", bootstrap nodes:" << bootstrapNodesList.size()
+             << ", mixnodes:" << mixnodesList.size();
 
     MessageCallback actualCallback = [this](const std::string &timestamp, const std::string &nick, const std::string &message)
     {
@@ -58,15 +77,13 @@ bool ChatPlugin::initialize()
     };
 
     // Subscribe to network metrics events once during initialization
-    logos->waku_module.on("mixnodePoolSizeResponse", [this](const QVariantList &data) {
-        emitEvent(QStringLiteral("mixnodePoolSizeResponse"), data);
-    });
+    logos->waku_module.on("mixnodePoolSizeResponse", [this](const QVariantList &data)
+                          { emitEvent(QStringLiteral("mixnodePoolSizeResponse"), data); });
 
-    logos->waku_module.on("lightpushPeersCountResponse", [this](const QVariantList &data) {
-        emitEvent(QStringLiteral("lightpushPeersCountResponse"), data);
-    });
+    logos->waku_module.on("lightpushPeersCountResponse", [this](const QVariantList &data)
+                          { emitEvent(QStringLiteral("lightpushPeersCountResponse"), data); });
 
-    void *result = ::initAndStart(logosAPI, logos, currentRelayTopic, actualCallback);
+    void *result = ::initAndStart(logosAPI, logos, currentRelayTopic, actualCallback, discoveryMode, `, mixnodesVec);
 
     return (result != nullptr);
 }
