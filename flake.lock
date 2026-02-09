@@ -333,6 +333,28 @@
         "type": "github"
       }
     },
+    "logos-messaging-nim": {
+      "inputs": {
+        "nixpkgs": "nixpkgs_11",
+        "zerokit": "zerokit"
+      },
+      "locked": {
+        "lastModified": 1770622944,
+        "narHash": "sha256-mL7ZSKlt+/fQTKVbXPtpZNkogKMOZrjvPfXa/QkkcyM=",
+        "ref": "poc/logos-testnet-mix",
+        "rev": "161bc02ad437b206e08c8b0999e56f81c34165b5",
+        "revCount": 2220,
+        "submodules": true,
+        "type": "git",
+        "url": "https://github.com/logos-messaging/logos-messaging-nim"
+      },
+      "original": {
+        "ref": "poc/logos-testnet-mix",
+        "submodules": true,
+        "type": "git",
+        "url": "https://github.com/logos-messaging/logos-messaging-nim"
+      }
+    },
     "logos-module": {
       "inputs": {
         "logos-cpp-sdk": "logos-cpp-sdk_5",
@@ -386,6 +408,7 @@
       "inputs": {
         "logos-cpp-sdk": "logos-cpp-sdk_6",
         "logos-liblogos": "logos-liblogos_3",
+        "logos-messaging-nim": "logos-messaging-nim",
         "nixpkgs": [
           "logos-waku-module",
           "logos-liblogos",
@@ -393,11 +416,11 @@
         ]
       },
       "locked": {
-        "lastModified": 1770376949,
-        "narHash": "sha256-ypnkTl6qgRgQ+bzWylrkEN4Te2/n2xAjfFwmWcGMJLA=",
+        "lastModified": 1770624679,
+        "narHash": "sha256-otCo0vqWD2Ijd3FV9XwiIocVC47IuBdsAeppinlTBPU=",
         "owner": "logos-co",
         "repo": "logos-waku-module",
-        "rev": "0112b43a0a2092ddc0ae4d5f4159993410385373",
+        "rev": "e2ef25b57eb8806405c7f3a945b7d9ab36cf8ac0",
         "type": "github"
       },
       "original": {
@@ -436,6 +459,22 @@
         "owner": "NixOS",
         "ref": "nixos-unstable",
         "repo": "nixpkgs",
+        "type": "github"
+      }
+    },
+    "nixpkgs_11": {
+      "locked": {
+        "lastModified": 1740603184,
+        "narHash": "sha256-t+VaahjQAWyA+Ctn2idyo1yxRIYpaDxMgHkgCNiMJa4=",
+        "owner": "NixOS",
+        "repo": "nixpkgs",
+        "rev": "f44bd8ca21e026135061a0a57dcf3d0775b67a49",
+        "type": "github"
+      },
+      "original": {
+        "owner": "NixOS",
+        "repo": "nixpkgs",
+        "rev": "f44bd8ca21e026135061a0a57dcf3d0775b67a49",
         "type": "github"
       }
     },
@@ -576,6 +615,53 @@
           "logos-liblogos",
           "nixpkgs"
         ]
+      }
+    },
+    "rust-overlay": {
+      "inputs": {
+        "nixpkgs": [
+          "logos-waku-module",
+          "logos-messaging-nim",
+          "zerokit",
+          "nixpkgs"
+        ]
+      },
+      "locked": {
+        "lastModified": 1748399823,
+        "narHash": "sha256-kahD8D5hOXOsGbNdoLLnqCL887cjHkx98Izc37nDjlA=",
+        "owner": "oxalica",
+        "repo": "rust-overlay",
+        "rev": "d68a69dc71bc19beb3479800392112c2f6218159",
+        "type": "github"
+      },
+      "original": {
+        "owner": "oxalica",
+        "repo": "rust-overlay",
+        "type": "github"
+      }
+    },
+    "zerokit": {
+      "inputs": {
+        "nixpkgs": [
+          "logos-waku-module",
+          "logos-messaging-nim",
+          "nixpkgs"
+        ],
+        "rust-overlay": "rust-overlay"
+      },
+      "locked": {
+        "lastModified": 1749115386,
+        "narHash": "sha256-UexIE2D7zr6aRajwnKongXwCZCeRZDXOL0kfjhqUFSU=",
+        "owner": "vacp2p",
+        "repo": "zerokit",
+        "rev": "dc0b31752c91e7b4fefc441cfa6a8210ad7dba7b",
+        "type": "github"
+      },
+      "original": {
+        "owner": "vacp2p",
+        "repo": "zerokit",
+        "rev": "dc0b31752c91e7b4fefc441cfa6a8210ad7dba7b",
+        "type": "github"
       }
     }
   },
