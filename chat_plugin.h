@@ -21,11 +21,15 @@ public:
     QString version() const override { return "1.0.0"; }
 
     // ChatInterface implementation
-    Q_INVOKABLE bool initialize() override;
+    Q_INVOKABLE bool initialize(int mode, const QString& bootstrapNodes, const QString& mixnodes) override;
     Q_INVOKABLE bool joinChannel(const QString& channelName) override;
     Q_INVOKABLE void sendMessage(const QString& channelName, const QString& username, const QString& message) override;
     Q_INVOKABLE bool retrieveHistory(const std::string& channelName) override;
     Q_INVOKABLE bool retrieveHistory(const QString& channelName);
+
+    // Network metrics
+    Q_INVOKABLE bool getMixnodePoolSize() override;
+    Q_INVOKABLE bool getLightpushPeersCount() override;
 
     // LogosAPI initialization
     Q_INVOKABLE void initLogos(LogosAPI* logosAPIInstance);

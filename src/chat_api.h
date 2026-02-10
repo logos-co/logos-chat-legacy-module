@@ -18,6 +18,7 @@
 #include "protocol/protocol.h"
 #include "message.pb.h"
 #include "logos_sdk.h"
+#include "chat_interface.h"
 
 // Constants
 extern const std::string TOY_CHAT_CONTENT_TOPIC;
@@ -88,7 +89,9 @@ void storeQueryCallback(int callerRet, const char* msg, size_t len, void* userDa
 void nodeOperationCallback(int callerRet, const char* msg, size_t len, void* userData);
 void retrieveHistory(LogosAPI* logosAPI, LogosModules* logos, const std::string& channelName, MessageCallback callback = nullptr);
 void event_handler(int callerRet, const char* msg, size_t len, void* userData);
-void* initAndStart(LogosAPI* logosAPI, LogosModules* logos, const std::string& relayTopic, MessageCallback messageCallback = nullptr);
+void* initAndStart(LogosAPI* logosAPI, LogosModules* logos, const std::string& relayTopic, MessageCallback messageCallback,
+                   DiscoveryMode discoveryMode, const std::vector<std::string>& bootstrapNodes, const std::vector<std::string>& mixnodes);
 bool joinChannel(LogosAPI* logosAPI, LogosModules* logos, const std::string& channelName, const std::string& relayTopic);
+std::string buildWakuConfig(DiscoveryMode discoveryMode, const std::vector<std::string>& bootstrapNodes, const std::vector<std::string>& mixnodes);
 
 #endif // CHAT_API_H 
