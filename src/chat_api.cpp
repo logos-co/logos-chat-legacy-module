@@ -2,14 +2,14 @@
 #include <unordered_set> // Add for storing message hashes
 
 // Constants
-const std::string TOY_CHAT_CONTENT_TOPIC = "/toy-chat/2/baixa-chiado/proto";
-const std::string DEFAULT_PUBSUB_TOPIC = "/waku/2/rs/16/32";
-const std::string STORE_NODE = "/dns4/store-01.do-ams3.status.staging.status.im/tcp/30303/p2p/16Uiu2HAm3xVDaz6SRJ6kErwC21zBJEZjavVXg7VSkoWzaV1aMA3F";
+const std::string TOY_CHAT_CONTENT_TOPIC = "/toy-chat/2/baixa-chiado-mix/proto";
+const std::string DEFAULT_PUBSUB_TOPIC = "";
+std::string currentStoreNode = "";
 const std::string CONTENT_TOPIC_PREFIX = "/toy-chat/2/";
 const std::string CONTENT_TOPIC_SUFFIX = "/proto";
 
 // Global variables
-void* userData = nullptr;
+void *userData = nullptr;
 std::vector<std::string> subscribedChannels;
 
 // Set to store message hashes we've already processed
@@ -22,187 +22,219 @@ AppState appState;
 const int RET_OK = 0; // Define RET_OK since we no longer have libwaku.h
 
 // Helper function to format a channel name into a content topic
-std::string formatContentTopic(const std::string& channelName) {
+std::string formatContentTopic(const std::string &channelName)
+{
     // Return the formatted content topic
     return CONTENT_TOPIC_PREFIX + channelName + CONTENT_TOPIC_SUFFIX;
 }
 
 // Get the current UTC timestamp in seconds
-uint64_t getCurrentTimestampProto() {
-  using namespace std::chrono;
-  return duration_cast<seconds>(system_clock::now().time_since_epoch()).count();
+uint64_t getCurrentTimestampProto()
+{
+    using namespace std::chrono;
+    return duration_cast<seconds>(system_clock::now().time_since_epoch()).count();
 }
 
 // Format a timestamp to human-readable format
-std::string formatTimestampProto(uint64_t timestamp) {
-  time_t time = static_cast<time_t>(timestamp);
-  std::tm tm = *std::gmtime(&time);
-  std::stringstream ss;
-  ss << std::put_time(&tm, "%Y-%m-%d %H:%M:%S UTC");
-  return ss.str();
+std::string formatTimestampProto(uint64_t timestamp)
+{
+    time_t time = static_cast<time_t>(timestamp);
+    std::tm tm = *std::gmtime(&time);
+    std::stringstream ss;
+    ss << std::put_time(&tm, "%Y-%m-%d %H:%M:%S UTC");
+    return ss.str();
 }
 
 // Create a new Chat2Message
-chat::Chat2Message createMessage(const std::string& nick, const std::string& message) {
-  chat::Chat2Message chat_msg;
-  chat_msg.set_timestamp(getCurrentTimestampProto());
-  chat_msg.set_nick(nick);
-  chat_msg.set_payload(message);
-  return chat_msg;
+chat::Chat2Message createMessage(const std::string &nick, const std::string &message)
+{
+    chat::Chat2Message chat_msg;
+    chat_msg.set_timestamp(getCurrentTimestampProto());
+    chat_msg.set_nick(nick);
+    chat_msg.set_payload(message);
+    return chat_msg;
 }
 
 // Print a Chat2Message
-void printMessage(const chat::Chat2Message& message) {
-  std::cout << "Timestamp: " << formatTimestampProto(message.timestamp()) << std::endl;
-  std::cout << "Nick: " << message.nick() << std::endl;
-  std::cout << "Message: " << message.payload() << std::endl;
+void printMessage(const chat::Chat2Message &message)
+{
+    std::cout << "Timestamp: " << formatTimestampProto(message.timestamp()) << std::endl;
+    std::cout << "Nick: " << message.nick() << std::endl;
+    std::cout << "Message: " << message.payload() << std::endl;
 }
 
 // Create a string from a vector of bytes
-std::string bytesToStringProto(const std::vector<uint8_t>& bytes) {
-  std::string result;
-  for (size_t i = 0; i < bytes.size(); ++i) {
-    if (i > 0) result += ",";
-    result += std::to_string(bytes[i]);
-  }
-  return "[" + result + "]";
+std::string bytesToStringProto(const std::vector<uint8_t> &bytes)
+{
+    std::string result;
+    for (size_t i = 0; i < bytes.size(); ++i)
+    {
+        if (i > 0)
+            result += ",";
+        result += std::to_string(bytes[i]);
+    }
+    return "[" + result + "]";
 }
 
 // Decode a binary payload into a DecodedMessage
-DecodedMessage decodeProto(const std::vector<uint8_t>& payload) {
-  DecodedMessage result;
-  result.success = false;
-  
-  std::string binary_data(payload.begin(), payload.end());
-  chat::Chat2Message message;
-  
-  if (message.ParseFromString(binary_data)) {
-    result.success = true;
-    result.timestamp = formatTimestampProto(message.timestamp());
-    result.nick = message.nick();
-    result.payload = message.payload();
-  }
-  
-  return result;
+DecodedMessage decodeProto(const std::vector<uint8_t> &payload)
+{
+    DecodedMessage result;
+    result.success = false;
+
+    std::string binary_data(payload.begin(), payload.end());
+    chat::Chat2Message message;
+
+    if (message.ParseFromString(binary_data))
+    {
+        result.success = true;
+        result.timestamp = formatTimestampProto(message.timestamp());
+        result.nick = message.nick();
+        result.payload = message.payload();
+    }
+
+    return result;
 }
 
 // Print a decoded message
-void printDecodedMessage(const DecodedMessage& message, const std::vector<uint8_t>& originalPayload) {
-  if (message.success) {
-    std::cout << "Successfully decoded message:" << std::endl;
-    std::cout << "Timestamp: " << message.timestamp << std::endl;
-    std::cout << "Nick: " << message.nick << std::endl;
-    std::cout << "Message: " << message.payload << std::endl;
-  } else {
-    std::cout << "Failed to decode message from payload: " << bytesToStringProto(originalPayload) << std::endl;
-  }
-  std::cout << std::endl;
+void printDecodedMessage(const DecodedMessage &message, const std::vector<uint8_t> &originalPayload)
+{
+    if (message.success)
+    {
+        std::cout << "Successfully decoded message:" << std::endl;
+        std::cout << "Timestamp: " << message.timestamp << std::endl;
+        std::cout << "Nick: " << message.nick << std::endl;
+        std::cout << "Message: " << message.payload << std::endl;
+    }
+    else
+    {
+        std::cout << "Failed to decode message from payload: " << bytesToStringProto(originalPayload) << std::endl;
+    }
+    std::cout << std::endl;
 }
 
 // Decode and print a Chat2Message from a binary payload (combined operation)
-void decodePayloadProto(const std::vector<uint8_t>& payload) {
-  auto decodedMsg = decodeProto(payload);
-  printDecodedMessage(decodedMsg, payload);
+void decodePayloadProto(const std::vector<uint8_t> &payload)
+{
+    auto decodedMsg = decodeProto(payload);
+    printDecodedMessage(decodedMsg, payload);
 }
 
 // Function to format a timestamp to a human-readable string
-std::string formatTimestamp(uint64_t timestamp) {
-  time_t time = static_cast<time_t>(timestamp);
-  std::tm tm = *std::gmtime(&time);
-  std::stringstream ss;
-  ss << std::put_time(&tm, "%Y-%m-%d %H:%M:%S UTC");
-  return ss.str();
+std::string formatTimestamp(uint64_t timestamp)
+{
+    time_t time = static_cast<time_t>(timestamp);
+    std::tm tm = *std::gmtime(&time);
+    std::stringstream ss;
+    ss << std::put_time(&tm, "%Y-%m-%d %H:%M:%S UTC");
+    return ss.str();
 }
 
 // Signal handler
-void signalHandler(int signal) {
+void signalHandler(int signal)
+{
     std::cout << "Received signal " << signal << ", shutting down..." << std::endl;
     appState.running = false;
 }
 
 // Store query callback
-void storeQueryCallback(int callerRet, const char* msg, size_t len, void* userData) {
+void storeQueryCallback(int callerRet, const char *msg, size_t len, void *userData)
+{
     std::cout << "\n\n\nstoreQueryCallback called with callerRet: " << callerRet << std::endl;
 
     // Get the message callback from the context
-    StoreQueryContext* context = static_cast<StoreQueryContext*>(userData);
+    StoreQueryContext *context = static_cast<StoreQueryContext *>(userData);
     MessageCallback callback = nullptr;
-    if (context != nullptr) {
+    if (context != nullptr)
+    {
         callback = context->callback;
     }
 
-    if (callerRet == RET_OK && msg != nullptr && len > 0) {
+    if (callerRet == RET_OK && msg != nullptr && len > 0)
+    {
         std::string jsonStr(msg, len);
         // Find all payloads in the JSON
         size_t pos = 0;
         size_t messageCount = 0;
-        while ((pos = jsonStr.find("\"payload\":[", pos)) != std::string::npos) {
+        while ((pos = jsonStr.find("\"payload\":[", pos)) != std::string::npos)
+        {
             messageCount++;
             pos += 11; // Skip "payload":[ part
             // Find end of payload array
             size_t endPos = jsonStr.find("]", pos);
-            if (endPos != std::string::npos) {
+            if (endPos != std::string::npos)
+            {
                 std::string payloadStr = jsonStr.substr(pos, endPos - pos);
                 // std::cout << "Raw payload " << messageCount << ": [" << payloadStr << "]" << std::endl;
                 // Convert payload string to vector of bytes
                 std::vector<uint8_t> payloadBytes;
                 std::stringstream ss(payloadStr);
                 std::string numberStr;
-                while (std::getline(ss, numberStr, ',')) {
+                while (std::getline(ss, numberStr, ','))
+                {
                     payloadBytes.push_back(static_cast<uint8_t>(std::stoi(numberStr)));
                 }
                 // Decode the payload
                 // std::cout << "Attempting to decode payload " << messageCount << ":" << std::endl;
                 auto decodedMsg = decodeProto(payloadBytes);
                 printDecodedMessage(decodedMsg, payloadBytes);
-                
+
                 // Call the user callback if provided and message was decoded successfully
-                if (callback && decodedMsg.success) {
+                if (callback && decodedMsg.success)
+                {
                     callback(decodedMsg.timestamp, decodedMsg.nick, decodedMsg.payload);
                 }
-                
+
                 // std::cout << "----------------------------------------" << std::endl;
             }
         }
         // std::cout << "Total messages found: " << messageCount << std::endl;
     }
-    else if (callerRet != RET_OK) {
+    else if (callerRet != RET_OK)
+    {
         std::cerr << "Store query error: " << callerRet;
-        if (msg != nullptr && len > 0) {
+        if (msg != nullptr && len > 0)
+        {
             std::cerr << " - " << std::string(msg, len);
         }
         std::cerr << std::endl;
     }
 
     // Clean up the context
-    if (context != nullptr) {
+    if (context != nullptr)
+    {
         delete context;
     }
 }
 
 // Event handler for incoming messages
-void event_handler(int callerRet, const char* msg, size_t len, void* userData) {
-    if (msg == nullptr) {
+void event_handler(int callerRet, const char *msg, size_t len, void *userData)
+{
+    if (msg == nullptr)
+    {
         std::cerr << "event_handler received null message" << std::endl;
         return;
     }
-    
+
     std::string jsonStr(msg);
-    
+
     // Check for message hash to avoid duplicates
     size_t hashPos = jsonStr.find("\"messageHash\":");
-    if (hashPos != std::string::npos) {
+    if (hashPos != std::string::npos)
+    {
         size_t hashStart = jsonStr.find("\"", hashPos + 14) + 1;
         size_t hashEnd = jsonStr.find("\"", hashStart);
-        if (hashStart != std::string::npos && hashEnd != std::string::npos) {
+        if (hashStart != std::string::npos && hashEnd != std::string::npos)
+        {
             std::string messageHash = jsonStr.substr(hashStart, hashEnd - hashStart);
-            
+
             // If we've already processed this message, skip it
-            if (processedMessageHashes.find(messageHash) != processedMessageHashes.end()) {
+            if (processedMessageHashes.find(messageHash) != processedMessageHashes.end())
+            {
                 // std::cout << "Skipping duplicate message with hash: " << messageHash << std::endl;
                 return;
             }
-            
+
             // Otherwise, add it to our set of processed hashes
             processedMessageHashes.insert(messageHash);
             // std::cout << "Processing new message with hash: " << messageHash << std::endl;
@@ -211,41 +243,48 @@ void event_handler(int callerRet, const char* msg, size_t len, void* userData) {
 
     // Debug log the message
     std::cout << "event_handler called with callerRet: " << callerRet << std::endl;
-    
 
-    EventHandlerContext* context = static_cast<EventHandlerContext*>(userData);
+    EventHandlerContext *context = static_cast<EventHandlerContext *>(userData);
     MessageCallback callback = nullptr;
-    if (context != nullptr) {
+    if (context != nullptr)
+    {
         callback = context->callback;
     }
 
     // Check if the message contains "contentTopic" field
     size_t contentTopicPos = jsonStr.find("\"contentTopic\":");
-    if (contentTopicPos != std::string::npos) {
+    if (contentTopicPos != std::string::npos)
+    {
         // Find the start and end of the content topic value
         size_t valueStart = jsonStr.find("\"", contentTopicPos + 14) + 1;
         size_t valueEnd = jsonStr.find("\"", valueStart);
-        if (valueStart != std::string::npos && valueEnd != std::string::npos) {
+        if (valueStart != std::string::npos && valueEnd != std::string::npos)
+        {
             std::string contentTopic = jsonStr.substr(valueStart, valueEnd - valueStart);
 
             // Check if the content topic is in our list of subscribed channels
             bool isSubscribed = false;
-            for (const auto& channel : subscribedChannels) {
-                if (contentTopic == channel) {
+            for (const auto &channel : subscribedChannels)
+            {
+                if (contentTopic == channel)
+                {
                     isSubscribed = true;
                     break;
                 }
             }
 
             // Only process if the content topic matches one of our subscribed channels
-            if (isSubscribed) {
+            if (isSubscribed)
+            {
                 // std::cout << "\nReceived message with matching content topic: " << contentTopic << std::endl;
                 // Extract the payload
                 size_t payloadPos = jsonStr.find("\"payload\":\"");
-                if (payloadPos != std::string::npos) {
+                if (payloadPos != std::string::npos)
+                {
                     size_t payloadStart = payloadPos + 11; // Skip "payload":"
                     size_t payloadEnd = jsonStr.find("\"", payloadStart);
-                    if (payloadStart != std::string::npos && payloadEnd != std::string::npos) {
+                    if (payloadStart != std::string::npos && payloadEnd != std::string::npos)
+                    {
                         std::string encodedPayload = jsonStr.substr(payloadStart, payloadEnd - payloadStart);
                         // std::cout << "Encoded payload: " << encodedPayload << std::endl;
                         // Decode the base64 payload
@@ -254,9 +293,10 @@ void event_handler(int callerRet, const char* msg, size_t len, void* userData) {
                         // std::cout << "Decoding protobuf payload:" << std::endl;
                         auto decodedMsg = decodeProto(decodedBytes);
                         printDecodedMessage(decodedMsg, decodedBytes);
-                        
+
                         // Call the user callback if provided and message was decoded successfully
-                        if (callback && decodedMsg.success) {
+                        if (callback && decodedMsg.success)
+                        {
                             callback(decodedMsg.timestamp, decodedMsg.nick, decodedMsg.payload);
                         }
                     }
@@ -267,20 +307,25 @@ void event_handler(int callerRet, const char* msg, size_t len, void* userData) {
 }
 
 // Base64 decoding function
-std::vector<uint8_t> base64Decode(const std::string& encoded) {
+std::vector<uint8_t> base64Decode(const std::string &encoded)
+{
     std::string base64_chars =
         "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
         "abcdefghijklmnopqrstuvwxyz"
         "0123456789+/";
     std::vector<uint8_t> decoded;
     int val = 0, valb = -8;
-    for (char c : encoded) {
-        if (c == '=') break;
+    for (char c : encoded)
+    {
+        if (c == '=')
+            break;
         size_t pos = base64_chars.find(c);
-        if (pos == std::string::npos) continue;
+        if (pos == std::string::npos)
+            continue;
         val = (val << 6) + static_cast<int>(pos);
         valb += 6;
-        if (valb >= 0) {
+        if (valb >= 0)
+        {
             decoded.push_back(static_cast<uint8_t>((val >> valb) & 0xFF));
             valb -= 8;
         }
@@ -289,17 +334,20 @@ std::vector<uint8_t> base64Decode(const std::string& encoded) {
 }
 
 // Base64 encoding function
-std::string base64Encode(const std::vector<uint8_t>& data) {
+std::string base64Encode(const std::vector<uint8_t> &data)
+{
     std::string base64_chars =
         "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
         "abcdefghijklmnopqrstuvwxyz"
         "0123456789+/";
     std::string encoded;
     int val = 0, valb = -6;
-    for (uint8_t c : data) {
+    for (uint8_t c : data)
+    {
         val = (val << 8) + c;
         valb += 8;
-        while (valb >= 0) {
+        while (valb >= 0)
+        {
             encoded.push_back(base64_chars[(val >> valb) & 0x3F]);
             valb -= 6;
         }
@@ -313,38 +361,44 @@ std::string base64Encode(const std::vector<uint8_t>& data) {
 }
 
 // Function to create a chat message
-ChatMessage createChatMessage(const std::string& username, const std::string& message) {
+ChatMessage createChatMessage(const std::string &username, const std::string &message)
+{
     // Use ChatMessage constructor from protocol.h
     return ChatMessage(username, message);
 }
 
 // Function to encode a chat message using protobuf
-bool encodeProto(const ChatMessage& msg, std::vector<uint8_t>& output) {
+bool encodeProto(const ChatMessage &msg, std::vector<uint8_t> &output)
+{
     // Use the ChatMessage's serialize method
     output = msg.serialize();
     return true;
 }
 
 // Function to send a message
-void sendMessage(LogosAPI* logosAPI, LogosModules* logos, const std::string& channelName, const std::string& username, const std::string& message) {
-    if (!logosAPI) {
+void sendMessage(LogosAPI *logosAPI, LogosModules *logos, const std::string &channelName, const std::string &username, const std::string &message)
+{
+    if (!logosAPI)
+    {
         std::cerr << "sendMessage: LogosAPI instance is null" << std::endl;
         return;
     }
 
-    if (!logos) {
+    if (!logos)
+    {
         std::cerr << "sendMessage: LogosModules instance is null" << std::endl;
         return;
     }
 
-    auto& wakuModule = logos->waku_module;
+    auto &wakuModule = logos->waku_module;
 
     std::cout << "sendMessage called with channelName: " << channelName
               << ", username: " << username
               << ", message: " << message << std::endl;
 
     std::string contentTopic = channelName;
-    if (channelName.find("/toy-chat/") == std::string::npos) {
+    if (channelName.find("/toy-chat/") == std::string::npos)
+    {
         contentTopic = formatContentTopic(channelName);
     }
 
@@ -353,72 +407,175 @@ void sendMessage(LogosAPI* logosAPI, LogosModules* logos, const std::string& cha
 
     ChatMessage chatMsg = createChatMessage(username, message);
     std::vector<uint8_t> encodedBytes = chatMsg.serialize();
-    if (encodedBytes.empty()) {
+    if (encodedBytes.empty())
+    {
         std::cerr << "Failed to encode message" << std::endl;
         return;
     }
 
     std::string base64Payload = base64Encode(encodedBytes);
     std::string messageJson = R"({
-        "payload": ")" + base64Payload + R"(",
-        "contentTopic": ")" + contentTopic + R"(",
+        "payload": ")" + base64Payload +
+                              R"(",
+        "contentTopic": ")" + contentTopic +
+                              R"(",
         "version": 1,
-        "timestamp": )" + std::to_string(std::chrono::duration_cast<std::chrono::nanoseconds>(
-            std::chrono::system_clock::now().time_since_epoch()).count()) + R"(,
+        "timestamp": )" + std::to_string(std::chrono::duration_cast<std::chrono::nanoseconds>(std::chrono::system_clock::now().time_since_epoch()).count()) +
+                              R"(,
         "ephemeral": false
     })";
     std::cout << "Sending message as " << username << ": " << message << std::endl;
     std::cout << "Message JSON: " << messageJson << std::endl;
 
-    if (!wakuModule.relayPublish(QString::fromStdString(DEFAULT_PUBSUB_TOPIC),
-                                 QString::fromStdString(messageJson))) {
+    if (!wakuModule.lightPublish(QString::fromStdString(DEFAULT_PUBSUB_TOPIC),
+                                 QString::fromStdString(messageJson)))
+    {
         std::cerr << "Failed to publish message via WakuModule" << std::endl;
     }
 }
 
+// Build Waku configuration based on discovery mode
+// mixnodes: list of "multiaddr:mixPubKey" strings from UI configuration
+std::string buildWakuConfig(DiscoveryMode discoveryMode, const std::vector<std::string> &bootstrapNodes, const std::vector<std::string> &mixnodes)
+{
+    std::ostringstream config;
+    config << "{\n";
+    config << "    \"host\": \"0.0.0.0\",\n";
+    config << "    \"tcpPort\": 60010,\n";
+    config << "    \"key\": null,\n";
+    config << "    \"clusterId\": 2,\n";
+    config << "    \"relay\": true,\n";
+    config << "    \"mix\": true,\n";
+    config << "    \"shards\": [0],\n";
+    config << "    \"numShardsInNetwork\": 1,\n";
+    config << "    \"logLevel\": \"DEBUG\",\n";
+    config << "    \"keepAlive\": true,\n";
+    config << "    \"discv5Discovery\": false,\n";
+    config << "    \"discv5EnrAutoUpdate\": false,\n";
+
+    // Configure based on discovery mode
+    switch (discoveryMode)
+    {
+    case DiscoveryMode::ExtKadOnly:
+        // Extended Kademlia only - no mixnodes config, use Kad to discover them
+        config << "    \"enableKadDiscovery\": true,\n";
+        config << "    \"rendezvous\": false,\n";
+        config << "    \"peerExchange\": false,\n";
+        // Add kadBootstrapNodes from UI bootstrap nodes
+        config << "    \"kadBootstrapNodes\": [";
+        for (size_t i = 0; i < bootstrapNodes.size(); ++i)
+        {
+            config << "\"" << bootstrapNodes[i] << "\"";
+            if (i < bootstrapNodes.size() - 1)
+                config << ", ";
+        }
+        config << "],\n";
+        // Static nodes for initial connectivity
+        config << "    \"staticnodes\": [";
+        for (size_t i = 0; i < bootstrapNodes.size() && i < 2; ++i)
+        {
+            config << "\"" << bootstrapNodes[i] << "\"";
+            if (i < 1 && bootstrapNodes.size() > 1)
+                config << ", ";
+        }
+        config << "]\n";
+        break;
+
+    case DiscoveryMode::StdDiscovery:
+        // Standard Discovery - Rendezvous + Peer Exchange, with mixnodes configured
+        config << "    \"enableKadDiscovery\": false,\n";
+        config << "    \"rendezvous\": true,\n";
+        config << "    \"peerExchange\": true,\n";
+        // Static nodes for initial connectivity
+        config << "    \"staticnodes\": [";
+        for (size_t i = 0; i < bootstrapNodes.size() && i < 2; ++i)
+        {
+            config << "\"" << bootstrapNodes[i] << "\"";
+            if (i < 1 && bootstrapNodes.size() > 1)
+                config << ", ";
+        }
+        config << "],\n";
+        // Include mixnodes config from UI
+        config << "    \"mixnodes\": [";
+        for (size_t i = 0; i < mixnodes.size(); ++i)
+        {
+            config << "\"" << mixnodes[i] << "\"";
+            if (i < mixnodes.size() - 1)
+                config << ", ";
+        }
+        config << "]\n";
+        break;
+
+    case DiscoveryMode::All:
+        // All discovery methods - Kad + Rendezvous + Peer Exchange
+        config << "    \"enableKadDiscovery\": true,\n";
+        config << "    \"rendezvous\": true,\n";
+        config << "    \"peerExchange\": true,\n";
+        // Add kadBootstrapNodes from UI bootstrap nodes
+        config << "    \"kadBootstrapNodes\": [";
+        for (size_t i = 0; i < bootstrapNodes.size(); ++i)
+        {
+            config << "\"" << bootstrapNodes[i] << "\"";
+            if (i < bootstrapNodes.size() - 1)
+                config << ", ";
+        }
+        config << "],\n";
+        // Static nodes for initial connectivity
+        config << "    \"staticnodes\": [";
+        for (size_t i = 0; i < bootstrapNodes.size() && i < 2; ++i)
+        {
+            config << "\"" << bootstrapNodes[i] << "\"";
+            if (i < 1 && bootstrapNodes.size() > 1)
+                config << ", ";
+        }
+        config << "]\n";
+        break;
+    }
+
+    config << "}";
+    return config.str();
+}
+
 // Function to initialize and start a Waku node
-void* initAndStart(LogosAPI* logosAPI, LogosModules* logos, const std::string& relayTopic, MessageCallback messageCallback) {
-    if (!logosAPI) {
+void *initAndStart(LogosAPI *logosAPI, LogosModules *logos, const std::string &relayTopic, MessageCallback messageCallback,
+                   DiscoveryMode discoveryMode, const std::vector<std::string> &bootstrapNodes, const std::vector<std::string> &mixnodes,
+                   const std::string &storeNode)
+{
+    // Store the configured store node for use by retrieveHistory
+    currentStoreNode = storeNode;
+    if (!logosAPI)
+    {
         std::cerr << "initAndStart: LogosAPI instance is null" << std::endl;
         return nullptr;
     }
 
-    if (!logos) {
+    if (!logos)
+    {
         std::cerr << "initAndStart: LogosModules instance is null" << std::endl;
         return nullptr;
     }
 
-    auto& wakuModule = logos->waku_module;
+    auto &wakuModule = logos->waku_module;
 
-    // Create appropriate Waku config
-    std::string configStr = R"({
-        "host": "0.0.0.0",
-        "tcpPort": 60010,
-        "key": null,
-        "clusterId": 16,
-        "relay": true,
-        "relayTopics": [")" + relayTopic + R"("],
-        "shards": [1,32,64,128,256],
-        "maxMessageSize": "1024KiB",
-        "dnsDiscovery": true,
-        "dnsDiscoveryUrl": "enrtree://AMOJVZX4V6EXP7NTJPMAYJYST2QP6AJXYW76IU6VGJS7UVSNDYZG4@boot.prod.status.nodes.status.im",
-        "discv5Discovery": false,
-        "numShardsInNetwork": 257,
-        "discv5EnrAutoUpdate": false,
-        "logLevel": "INFO",
-        "keepAlive": true
-    })";
+    // Build Waku config based on discovery mode
+    std::string configStr = buildWakuConfig(discoveryMode, bootstrapNodes, mixnodes);
+
+    std::cout << "Discovery mode: " << static_cast<int>(discoveryMode) << std::endl;
+    std::cout << "Bootstrap nodes count: " << bootstrapNodes.size() << std::endl;
+    std::cout << "Mixnodes count: " << mixnodes.size() << std::endl;
 
     std::cout << "Waku node config: " << configStr << std::endl;
     std::cout << "Found Waku Plugin, initializing" << std::endl;
-    if (!wakuModule.initWaku(QString::fromStdString(configStr))) {
+    if (!wakuModule.initWaku(QString::fromStdString(configStr)))
+    {
         std::cerr << "Failed to initialize Waku module" << std::endl;
         return nullptr;
     }
 
     std::this_thread::sleep_for(std::chrono::seconds(3));
 
-    if (!wakuModule.on("wakuMessage", [messageCallback](const QString&, const QVariantList& data) {
+    if (!wakuModule.on("wakuMessage", [messageCallback](const QString &, const QVariantList &data)
+                       {
             if (!data.isEmpty()) {
                 std::string jsonStr = data.first().toString().toStdString();
 
@@ -498,16 +655,18 @@ void* initAndStart(LogosAPI* logosAPI, LogosModules* logos, const std::string& r
                 }
             } else {
                 std::cout << "\n\n\n\n\n\nContent Topic: No data available" << std::endl;
-            }
-        })) {
+            } }))
+    {
         std::cerr << "Failed to subscribe to wakuMessage events" << std::endl;
     }
 
-    if (!wakuModule.setEventCallback()) {
+    if (!wakuModule.setEventCallback())
+    {
         std::cerr << "Failed to register Waku event callback" << std::endl;
     }
 
-    if (!wakuModule.startWaku()) {
+    if (!wakuModule.startWaku())
+    {
         std::cerr << "Failed to start Waku module" << std::endl;
         return nullptr;
     }
@@ -517,36 +676,39 @@ void* initAndStart(LogosAPI* logosAPI, LogosModules* logos, const std::string& r
 
     // Return a non-null pointer to indicate success
     // We're not using this for anything meaningful anymore
-    return (void*)1;
+    return (void *)1;
 }
 
 // Function to join a chat channel
-bool joinChannel(LogosAPI* logosAPI, LogosModules* logos, const std::string& channelName, const std::string& relayTopic) {
-    if (!logosAPI) {
+bool joinChannel(LogosAPI *logosAPI, LogosModules *logos, const std::string &channelName, const std::string &relayTopic)
+{
+    if (!logosAPI)
+    {
         std::cerr << "joinChannel: LogosAPI instance is null" << std::endl;
         return false;
     }
 
-    if (!logos) {
+    if (!logos)
+    {
         std::cerr << "joinChannel: LogosModules instance is null" << std::endl;
         return false;
     }
 
-    auto& wakuModule = logos->waku_module;
+    auto &wakuModule = logos->waku_module;
 
     // Format the channel name into a content topic if not already formatted
     std::string contentTopic = channelName;
-    if (channelName.find("/toy-chat/") == std::string::npos) {
+    if (channelName.find("/toy-chat/") == std::string::npos)
+    {
         contentTopic = formatContentTopic(channelName);
     }
 
     std::cout << "Joining channel: " << channelName << std::endl;
     std::cout << "Subscribing to content topic: " << contentTopic << std::endl;
 
-    std::string contentTopics = "[\"" + contentTopic + "\"]";
-
-    if (!wakuModule.filterSubscribe(QString::fromStdString(relayTopic),
-                                    QString::fromStdString(contentTopics))) {
+    if (!wakuModule.relaySubscribe(QString::fromStdString(contentTopic),
+                                   QString::fromStdString(relayTopic)))
+    {
         std::cerr << "Failed to subscribe to content topic: " << contentTopic << std::endl;
         return false;
     }
@@ -556,25 +718,29 @@ bool joinChannel(LogosAPI* logosAPI, LogosModules* logos, const std::string& cha
 }
 
 // Function to retrieve message history from store node
-void retrieveHistory(LogosAPI* logosAPI, LogosModules* logos, const std::string& channelName, MessageCallback callback) {
-    if (!logosAPI) {
+void retrieveHistory(LogosAPI *logosAPI, LogosModules *logos, const std::string &channelName, MessageCallback callback)
+{
+    if (!logosAPI)
+    {
         std::cerr << "retrieveHistory: LogosAPI instance is null" << std::endl;
         return;
     }
 
-    if (!logos) {
+    if (!logos)
+    {
         std::cerr << "retrieveHistory: LogosModules instance is null" << std::endl;
         return;
     }
 
-    auto& wakuModule = logos->waku_module;
+    auto &wakuModule = logos->waku_module;
 
     // Format the channel name into a content topic if not already formatted
     std::string contentTopic = channelName;
-    if (channelName.find("/toy-chat/") == std::string::npos) {
+    if (channelName.find("/toy-chat/") == std::string::npos)
+    {
         contentTopic = formatContentTopic(channelName);
     }
-    
+
     std::cout << "Retrieving message history for channel: " << channelName << std::endl;
     std::cout << "Using content topic: " << contentTopic << std::endl;
 
@@ -584,59 +750,54 @@ void retrieveHistory(LogosAPI* logosAPI, LogosModules* logos, const std::string&
     auto nowSeconds = std::chrono::duration_cast<std::chrono::seconds>(now.time_since_epoch()).count();
     uint64_t timeStart = (nowSeconds - oneDay) * 1000000000ULL; // Convert to nanoseconds
 
-   std::string queryJson = R"({
+    std::string queryJson = R"({
        "requestId": "15be8c48-55ce-4bf2-a34-8813d4da2dec",
        "includeData": true,
-       "contentTopics": [")" + contentTopic + R"("],
-       "timeStart": 1744123537000000000,
+       "contentTopics": [")" +
+                            contentTopic + R"("],
+       "timeStart": )" + std::to_string(timeStart) + R"(,
        "paginationForward": true,
        "paginationLimit": 100
    })";
 
     std::cout << "Query JSON: " << queryJson.c_str() << std::endl;
 
-    if (!wakuModule.on("storeQueryResponse", [channelName, callback](const QString&, const QVariantList& data) {
+    if (!wakuModule.on("storeQueryResponse", [channelName, callback](const QString &, const QVariantList &data)
+                       {
         if (!data.isEmpty()) {
             std::string jsonStr = data.first().toString().toStdString();
 
-            // parse the json and print each message decoded
-            // Find all payloads in the JSON
+            // Parse base64-encoded payloads from store query response
+            // Response format: "payload":"<base64string>" (not byte arrays)
             size_t pos = 0;
             size_t messageCount = 0;
-            while ((pos = jsonStr.find("\"payload\":[", pos)) != std::string::npos) {
+            const std::string payloadKey = "\"payload\":\"";
+            while ((pos = jsonStr.find(payloadKey, pos)) != std::string::npos) {
                 messageCount++;
-                pos += 11; // Skip "payload":[ part
-                // Find end of payload array
-                size_t endPos = jsonStr.find("]", pos);
+                pos += payloadKey.size(); // Skip past "payload":"
+                // Find the closing quote
+                size_t endPos = jsonStr.find("\"", pos);
                 if (endPos != std::string::npos) {
-                    std::string payloadStr = jsonStr.substr(pos, endPos - pos);
-                    // Convert payload string to vector of bytes
-                    std::vector<uint8_t> payloadBytes;
-                    std::stringstream ss(payloadStr);
-                    std::string numberStr;
-                    while (std::getline(ss, numberStr, ',')) {
-                        payloadBytes.push_back(static_cast<uint8_t>(std::stoi(numberStr)));
+                    std::string base64Payload = jsonStr.substr(pos, endPos - pos);
+                    if (!base64Payload.empty()) {
+                        std::vector<uint8_t> payloadBytes = base64Decode(base64Payload);
+                        auto decodedMsg = decodeProto(payloadBytes);
+
+                        if (callback && decodedMsg.success) {
+                            callback(decodedMsg.timestamp, decodedMsg.nick, decodedMsg.payload);
+                        }
                     }
-                    // Decode the payload
-                    std::cout << "Attempting to decode payload " << messageCount << ":" << std::endl;
-                    auto decodedMsg = decodeProto(payloadBytes);
-                    // printDecodedMessage(decodedMsg, payloadBytes);
-                    
-                    // Call the callback if message was decoded successfully
-                    if (callback && decodedMsg.success) {
-                        callback(decodedMsg.timestamp, decodedMsg.nick, decodedMsg.payload);
-                    }
-                    
-                    std::cout << "----------------------------------------" << std::endl;
+                    pos = endPos + 1;
                 }
             }
             std::cout << "Total messages found: " << messageCount << std::endl;
-        }
-    })) {
+        } }))
+    {
         std::cerr << "Failed to subscribe to storeQueryResponse events" << std::endl;
     }
 
-    if (!wakuModule.storeQuery(QString::fromStdString(queryJson), QString::fromStdString(STORE_NODE))) {
+    if (!wakuModule.storeQuery(QString::fromStdString(queryJson), QString::fromStdString(currentStoreNode)))
+    {
         std::cerr << "Failed to request message history from Waku store" << std::endl;
     }
 }

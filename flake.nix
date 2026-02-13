@@ -6,7 +6,8 @@
     nixpkgs.follows = "logos-liblogos/nixpkgs";
     logos-cpp-sdk.url = "github:logos-co/logos-cpp-sdk";
     logos-liblogos.url = "github:logos-co/logos-liblogos";
-    logos-waku-module.url = "github:logos-co/logos-waku-module";
+    logos-waku-module.url = "github:logos-co/logos-waku-module?ref=logos-testnet-demo";
+    #logos-waku-module.url = "path:/Users/prem/Code/logos-waku-module";
   };
 
   outputs = { self, nixpkgs, logos-cpp-sdk, logos-liblogos, logos-waku-module }:
