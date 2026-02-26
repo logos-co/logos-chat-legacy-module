@@ -446,8 +446,8 @@ std::string buildWakuConfig(DiscoveryMode discoveryMode, const std::vector<std::
     config << "    \"clusterId\": 2,\n";
     config << "    \"relay\": true,\n";
     config << "    \"mix\": true,\n";
-    config << "    \"shards\": [0],\n";
-    config << "    \"numShardsInNetwork\": 1,\n";
+    config << "    \"shards\": [0,1,2,3,4,5,6,7],\n";
+    config << "    \"numShardsInNetwork\": 8,\n";
     config << "    \"logLevel\": \"DEBUG\",\n";
     config << "    \"keepAlive\": true,\n";
     config << "    \"discv5Discovery\": false,\n";
@@ -755,7 +755,8 @@ void retrieveHistory(LogosAPI *logosAPI, LogosModules *logos, const std::string 
        "includeData": true,
        "contentTopics": [")" +
                             contentTopic + R"("],
-       "timeStart": )" + std::to_string(timeStart) + R"(,
+       "timeStart": )" + std::to_string(timeStart) +
+                            R"(,
        "paginationForward": true,
        "paginationLimit": 100
    })";
