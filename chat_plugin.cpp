@@ -65,6 +65,7 @@ bool ChatPlugin::initialize(const QString &configJson)
     QString bootstrapNodes = config["bootstrapNodes"].toString();
     QString mixnodes = config["mixnodes"].toString();
     QString storeNode = config["storeNode"].toString();
+    QString nodeKey = config["nodeKey"].toString();
 
     // Parse comma-separated strings and convert to std::vector<std::string>
     QStringList bootstrapNodesList = bootstrapNodes.split(",", Qt::SkipEmptyParts);
@@ -105,7 +106,7 @@ bool ChatPlugin::initialize(const QString &configJson)
                           { emitEvent(QStringLiteral("lightpushPeersCountResponse"), data); });
 
     void *result = ::initAndStart(logosAPI, logos, currentRelayTopic, actualCallback, discoveryMode, bootstrapNodesVec, mixnodesVec,
-                                  storeNode.toStdString());
+                                  storeNode.toStdString(), nodeKey.toStdString());
 
     return (result != nullptr);
 }

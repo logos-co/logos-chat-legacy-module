@@ -91,8 +91,8 @@ void retrieveHistory(LogosAPI* logosAPI, LogosModules* logos, const std::string&
 void event_handler(int callerRet, const char* msg, size_t len, void* userData);
 void* initAndStart(LogosAPI* logosAPI, LogosModules* logos, const std::string& relayTopic, MessageCallback messageCallback,
                    DiscoveryMode discoveryMode, const std::vector<std::string>& bootstrapNodes, const std::vector<std::string>& mixnodes,
-                   const std::string& storeNode);
+                   const std::string& storeNode, const std::string& nodeKey);
 bool joinChannel(LogosAPI* logosAPI, LogosModules* logos, const std::string& channelName, const std::string& relayTopic);
-std::string buildWakuConfig(DiscoveryMode discoveryMode, const std::vector<std::string>& bootstrapNodes, const std::vector<std::string>& mixnodes);
+std::string buildWakuConfig(DiscoveryMode discoveryMode, const std::vector<std::string>& bootstrapNodes, const std::vector<std::string>& mixnodes, const std::string& nodeKey);
 
 #endif // CHAT_API_H 

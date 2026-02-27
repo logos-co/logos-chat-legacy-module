@@ -436,13 +436,16 @@ void sendMessage(LogosAPI *logosAPI, LogosModules *logos, const std::string &cha
 
 // Build Waku configuration based on discovery mode
 // mixnodes: list of "multiaddr:mixPubKey" strings from UI configuration
-std::string buildWakuConfig(DiscoveryMode discoveryMode, const std::vector<std::string> &bootstrapNodes, const std::vector<std::string> &mixnodes)
+std::string buildWakuConfig(DiscoveryMode discoveryMode, const std::vector<std::string> &bootstrapNodes, const std::vector<std::string> &mixnodes, const std::string &nodeKey)
 {
     std::ostringstream config;
     config << "{\n";
     config << "    \"host\": \"0.0.0.0\",\n";
     config << "    \"tcpPort\": 60010,\n";
-    config << "    \"key\": null,\n";
+    if (nodeKey.empty())
+        config << "    \"nodekey\": null,\n";
+    else
+        config << "    \"nodekey\": \"" << nodeKey << "\",\n";
     config << "    \"clusterId\": 2,\n";
     config << "    \"relay\": true,\n";
     config << "    \"mix\": true,\n";
@@ -539,7 +542,7 @@ std::string buildWakuConfig(DiscoveryMode discoveryMode, const std::vector<std::
 // Function to initialize and start a Waku node
 void *initAndStart(LogosAPI *logosAPI, LogosModules *logos, const std::string &relayTopic, MessageCallback messageCallback,
                    DiscoveryMode discoveryMode, const std::vector<std::string> &bootstrapNodes, const std::vector<std::string> &mixnodes,
-                   const std::string &storeNode)
+                   const std::string &storeNode, const std::string &nodeKey)
 {
     // Store the configured store node for use by retrieveHistory
     currentStoreNode = storeNode;
@@ -558,7 +561,7 @@ void *initAndStart(LogosAPI *logosAPI, LogosModules *logos, const std::string &r
     auto &wakuModule = logos->waku_module;
 
     // Build Waku config based on discovery mode
-    std::string configStr = buildWakuConfig(discoveryMode, bootstrapNodes, mixnodes);
+    std::string configStr = buildWakuConfig(discoveryMode, bootstrapNodes, mixnodes, nodeKey);
 
     std::cout << "Discovery mode: " << static_cast<int>(discoveryMode) << std::endl;
     std::cout << "Bootstrap nodes count: " << bootstrapNodes.size() << std::endl;
