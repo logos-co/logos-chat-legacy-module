@@ -1,5 +1,5 @@
 #include "chat_api.h"
-#include <unordered_set> // Add for storing message hashes
+#include <unordered_set>
 
 // Constants
 const std::string TOY_CHAT_CONTENT_TOPIC = "/toy-chat/2/baixa-chiado-mix/proto";
@@ -460,11 +460,9 @@ std::string buildWakuConfig(DiscoveryMode discoveryMode, const std::vector<std::
     switch (discoveryMode)
     {
     case DiscoveryMode::ExtKadOnly:
-        // Extended Kademlia only - no mixnodes config, use Kad to discover them
         config << "    \"enableKadDiscovery\": true,\n";
         config << "    \"rendezvous\": false,\n";
         config << "    \"peerExchange\": false,\n";
-        // Add kadBootstrapNodes from UI bootstrap nodes
         config << "    \"kadBootstrapNodes\": [";
         for (size_t i = 0; i < bootstrapNodes.size(); ++i)
         {
@@ -473,7 +471,6 @@ std::string buildWakuConfig(DiscoveryMode discoveryMode, const std::vector<std::
                 config << ", ";
         }
         config << "],\n";
-        // Static nodes for initial connectivity
         config << "    \"staticnodes\": [";
         for (size_t i = 0; i < bootstrapNodes.size() && i < 2; ++i)
         {
@@ -481,7 +478,16 @@ std::string buildWakuConfig(DiscoveryMode discoveryMode, const std::vector<std::
             if (i < 1 && bootstrapNodes.size() > 1)
                 config << ", ";
         }
-        config << "]\n";
+        config << "],\n";
+        // mixnodes requires ip4 multiaddresses (parseCmdArg(MixNodePubInfo) rejects dns4)
+        config << "    \"mixnodes\": [\n";
+        config << "        \"/ip4/138.68.122.137/tcp/30303/p2p/16Uiu2HAmTUbnxLGT9JvV6mu9oPyDjqHK4Phs1VDJNUgESgNSkuby:c288a425a6209c74ec07e2e8b6816e9b6995d1cd59b1ab482317c3dfb3ba200f\",\n";
+        config << "        \"/ip4/174.138.106.244/tcp/30303/p2p/16Uiu2HAmMK7PYygBtKUQ8EHp7EfaD3bCEsJrkFooK8RQ2PVpJprH:9d92279057940efd2e5e98c8922c079c24e45c083b00360c8dc6a298b1661716\",\n";
+        config << "        \"/ip4/136.119.156.87/tcp/30303/p2p/16Uiu2HAm4S1JYkuzDKLKQvwgAhZKs9otxXqt8SCGtB4hoJP1S397:fe60e95c50f70db9015525064e1fff962ccc982dde480f8faae30262710ece58\",\n";
+        config << "        \"/ip4/34.123.201.25/tcp/30303/p2p/16Uiu2HAm8Y9kgBNtjxvCnf1X6gnZJW5EGE4UwwCL3CCm55TwqBiH:312335324231ba7963c0c7524e042d1beac2927dbf810513a7fc8d901ab4e812\",\n";
+        config << "        \"/ip4/47.242.130.189/tcp/30303/p2p/16Uiu2HAm8YokiNun9BkeA1ZRmhLbtNUvcwRr64F69tYj9fkGyuEP:7d683767f23f5132a79c70587fec877575460122ebd459bb29c887b7b7a32110\",\n";
+        config << "        \"/ip4/43.99.103.10/tcp/30303/p2p/16Uiu2HAkvwhGHKNry6LACrB8TmEFoCJKEX29XR5dDUzk3UT3UNSE:0894b2852890d244e045f2ff5875e03a6b18f233ccd2e5297f62f7546e93884d\"\n";
+        config << "    ]\n";
         break;
 
     case DiscoveryMode::StdDiscovery:
