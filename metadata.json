@@ -2,7 +2,7 @@
   "name": "chat-mix",
   "version": "1.0.1",
   "description": "A chat plugin for Logos using mix and capability discovery",
-  "author": "Logos Core Team",
+  "author": "Logos AnonComms Team",
   "type": "core",
   "category": "chat",
   "main": "chat_plugin",
