@@ -1,7 +1,7 @@
 {
-  "name": "chat",
+  "name": "chat-mix",
   "version": "1.0.1",
-  "description": "A chat plugin for Logos",
+  "description": "A chat plugin for Logos using mix and capability discovery",
   "author": "Logos Core Team",
   "type": "core",
   "category": "chat",
