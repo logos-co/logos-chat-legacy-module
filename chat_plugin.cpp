@@ -105,16 +105,5 @@ void ChatPlugin::initLogos(LogosAPI* logosAPIInstance) {
 }
 
 void ChatPlugin::emitEvent(const QString& eventName, const QVariantList& data) {
-    if (!logosAPI) {
-        qWarning() << "ChatPlugin: LogosAPI not available, cannot emit" << eventName;
-        return;
-    }
-
-    LogosAPIClient* client = logosAPI->getClient("chat");
-    if (!client) {
-        qWarning() << "ChatPlugin: Failed to get chat client for event" << eventName;
-        return;
-    }
-
-    client->onEventResponse(this, eventName, data);
+    emit eventResponse(eventName, data);
 }
